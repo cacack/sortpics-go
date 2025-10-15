@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Staticcheck
+    - typecheck     # Type check
+    - unused        # Detect unused code
+    - gofmt         # Check code is formatted
+    - goimports     # Check imports are formatted
+    - misspell      # Spell checker
+    - revive        # Fast, configurable linter
+    - gosec         # Security checker
+    - bodyclose     # Check HTTP response body is closed
+    - nilerr        # Check nil error returns
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    check-shadowing: true
+
+  revive:
+    rules:
+      - name: exported
+        disabled: false
+      - name: package-comments
+        disabled: true  # Can be noisy for internal packages
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
