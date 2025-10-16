@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/alitto/pond"
 	"github.com/cacack/sortpics-go/internal/rename"
@@ -147,6 +148,11 @@ func run(cmd *cobra.Command, args []string) error {
 		<-sigChan
 		fmt.Fprintln(os.Stderr, "\nReceived interrupt signal. Canceling...")
 		cancel()
+
+		// Force exit after 2 seconds if graceful shutdown fails
+		time.Sleep(2 * time.Second)
+		fmt.Fprintln(os.Stderr, "Force exit (timeout)")
+		os.Exit(130)
 	}()
 
 	// Convert day adjust to string if needed
@@ -330,62 +336,73 @@ func processFiles(ctx context.Context, files []string, destDir string, cfg *conf
 		)
 	}
 
-	// Create worker pool with bounded queue
-	pool := pond.New(workers, len(files))
+	// Create worker pool with bounded queue and context cancellation
+	pool := pond.New(workers, len(files), pond.Context(ctx))
 
-	// Monitor context cancellation
+	// Submit tasks in a separate goroutine to avoid blocking on full queue
+	submitDone := make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		pool.StopAndWait()
+		defer close(submitDone)
+		for _, file := range files {
+			file := file // Capture for closure
+
+			// Check if context is canceled before submitting
+			if ctx.Err() != nil {
+				return
+			}
+
+			// Submit blocks if queue is full, but we run this in a goroutine
+			// so the main thread can respond to cancellation signals
+			pool.Submit(func() {
+				// Check if context is canceled
+				if ctx.Err() != nil {
+					if bar != nil {
+						bar.Add(1)
+					}
+					return
+				}
+
+				if err := processFile(file, destDir, cfg, stats, verbose); err != nil {
+					atomic.AddInt64(&stats.Errors, 1)
+					if verbose > 0 {
+						fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", file, err)
+					}
+				}
+				// Update progress bar
+				if bar != nil {
+					bar.Add(1)
+				}
+			})
+		}
 	}()
 
-	// Process each file
-	for _, file := range files {
-		file := file // Capture for closure
+	// Wait for either all submissions to complete or context cancellation
+	select {
+	case <-submitDone:
+		// All tasks submitted - wait for completion
+		pool.StopAndWait()
 
-		// Check if context is canceled before submitting
+	case <-ctx.Done():
+		// Context cancelled - stop immediately and discard queued tasks
+		stopCtx := pool.Stop()
+
+		// Wait briefly for running tasks to complete
 		select {
-		case <-ctx.Done():
-			pool.StopAndWait()
-			if bar != nil {
-				bar.Finish()
-			}
-			return stats, fmt.Errorf("processing canceled by user")
-		default:
+		case <-stopCtx.Done():
+			// Pool stopped cleanly
+		case <-time.After(1 * time.Second):
+			// Timeout - tasks are taking too long
 		}
 
-		pool.Submit(func() {
-			// Check if context is canceled
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-
-			if err := processFile(file, destDir, cfg, stats, verbose); err != nil {
-				atomic.AddInt64(&stats.Errors, 1)
-				if verbose > 0 {
-					fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", file, err)
-				}
-			}
-			// Update progress bar
-			if bar != nil {
-				bar.Add(1)
-			}
-		})
+		if bar != nil {
+			bar.Finish()
+		}
+		return stats, fmt.Errorf("processing canceled by user")
 	}
-
-	// Wait for all tasks to complete (or cancellation)
-	pool.StopAndWait()
 
 	// Finish progress bar
 	if bar != nil {
 		bar.Finish()
-	}
-
-	// Check if we were canceled
-	if ctx.Err() != nil {
-		return stats, fmt.Errorf("processing canceled by user")
 	}
 
 	return stats, nil
