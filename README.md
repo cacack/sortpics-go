@@ -155,11 +155,8 @@ sortpics --version
 ### Build Options
 
 ```bash
-# Build for current platform
-make build                # Binary in ./bin/sortpics
-
-# Build for all platforms
-make build-all            # Binaries in ./dist/
+# Build for all platforms (cross-compilation)
+make build                # Binaries in ./dist/
                           # Linux (amd64, arm64)
                           # macOS (amd64, arm64)
                           # Windows (amd64, arm64)

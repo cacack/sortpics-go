@@ -1,4 +1,4 @@
-.PHONY: help build build-all install install-local test lint fmt vet clean run deps tidy check test-fixtures test-fixtures-clean
+.PHONY: help build install install-global test lint fmt vet clean run deps tidy check test-fixtures test-fixtures-clean
 
 # Default target
 .DEFAULT_GOAL := help
@@ -6,7 +6,6 @@
 # Variables
 BINARY_NAME := sortpics
 CMD_PATH := ./cmd/sortpics
-BUILD_DIR := ./bin
 DIST_DIR := ./dist
 GO := go
 GOFLAGS := -v
@@ -18,20 +17,34 @@ INSTALL_DIR := $(HOME)/.local/bin
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 
+# Determine current platform binary
+ifeq ($(UNAME_S),Darwin)
+    ifeq ($(UNAME_M),arm64)
+        CURRENT_BINARY := $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64
+    else
+        CURRENT_BINARY := $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64
+    endif
+else ifeq ($(UNAME_S),Linux)
+    ifeq ($(UNAME_M),aarch64)
+        CURRENT_BINARY := $(DIST_DIR)/$(BINARY_NAME)-linux-arm64
+    else
+        CURRENT_BINARY := $(DIST_DIR)/$(BINARY_NAME)-linux-amd64
+    endif
+else ifeq ($(OS),Windows_NT)
+    ifeq ($(PROCESSOR_ARCHITECTURE),ARM64)
+        CURRENT_BINARY := $(DIST_DIR)/$(BINARY_NAME)-windows-arm64.exe
+    else
+        CURRENT_BINARY := $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe
+    endif
+endif
+
 ## help: Display this help message
 help:
 	@echo "Available targets:"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
 
-## build: Build the binary for the current platform
+## build: Build binaries for all supported platforms
 build:
-	@echo "Building $(BINARY_NAME) $(VERSION) for current platform..."
-	@mkdir -p $(BUILD_DIR)
-	$(GO) build $(GOFLAGS) $(LDFLAGS) -ldflags "-s -w -X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_PATH)
-	@echo "Binary built: $(BUILD_DIR)/$(BINARY_NAME)"
-
-## build-all: Build binaries for all supported platforms
-build-all:
 	@echo "Building $(BINARY_NAME) $(VERSION) for all platforms..."
 	@mkdir -p $(DIST_DIR)
 	# Linux
@@ -50,7 +63,7 @@ build-all:
 install: build
 	@echo "Installing $(BINARY_NAME) to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
-	@cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
+	@cp $(CURRENT_BINARY) $(INSTALL_DIR)/$(BINARY_NAME)
 	@chmod +x $(INSTALL_DIR)/$(BINARY_NAME)
 	@echo "Installed to $(INSTALL_DIR)/$(BINARY_NAME)"
 	@echo ""
@@ -123,14 +136,14 @@ check: fmt vet test
 ## clean: Remove build artifacts
 clean:
 	@echo "Cleaning..."
-	@rm -rf $(BUILD_DIR) $(DIST_DIR)
+	@rm -rf $(DIST_DIR)
 	@rm -f coverage.out coverage.html
 	@echo "Clean complete"
 
 ## run: Build and run the binary (use ARGS for arguments)
 run: build
 	@echo "Running $(BINARY_NAME)..."
-	$(BUILD_DIR)/$(BINARY_NAME) $(ARGS)
+	$(CURRENT_BINARY) $(ARGS)
 
 ## run-dev: Run directly with go run (use ARGS for arguments)
 run-dev:

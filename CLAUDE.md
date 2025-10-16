@@ -14,8 +14,9 @@ This is a complete rewrite of the original Python sortpics tool, providing bette
 
 ```bash
 # Build
-make build              # Build binary to ./bin/sortpics
-make install            # Install to $GOPATH/bin
+make build              # Build binaries for all platforms to ./dist/
+make install            # Install platform-specific binary to ~/.local/bin
+make install-global     # Install to $GOPATH/bin
 
 # Testing
 make test               # Run all tests with race detector
