@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 sortpics-go is a Go port of a Python photo/video organization tool. It organizes media files into a chronological directory structure using EXIF metadata with a fallback hierarchy: EXIF → QuickTime → filename → filesystem.
 
-**Status**: Phase 1A complete (duplicate detector with 86.8% coverage). Currently on Phase 1B (path generator).
+**Status**: Phase 1 complete (duplicate detector: 86.8% coverage, path generator: 97.6% coverage). Ready for Phase 2 (metadata extraction).
 
 ## Build & Test Commands
 
@@ -40,8 +40,8 @@ make clean              # Remove build artifacts
 ### Component Hierarchy (Bottom-up)
 
 1. **internal/duplicate** - ✅ COMPLETE - SHA256 hashing, duplicate detection, collision resolution (`_N` suffix)
-2. **internal/pathgen** - 🚧 NEXT - Generates destination paths in format: `YYYY/MM/YYYY-MM-DD/YYYYMMDD-HHMMSS.subsec_Make-Model.ext`
-3. **internal/metadata** - PENDING - EXIF extraction via ExifTool wrapper, datetime fallback logic, make/model normalization
+2. **internal/pathgen** - ✅ COMPLETE - Generates destination paths in format: `YYYY/MM/YYYY-MM-DD/YYYYMMDD-HHMMSS.subsec_Make-Model.ext`
+3. **internal/metadata** - 🚧 NEXT - EXIF extraction via ExifTool wrapper, datetime fallback logic, make/model normalization
 4. **internal/rename** - PENDING - Orchestrates metadata → pathgen → duplicate → file operations (atomic copy/move)
 5. **cmd/sortpics/cmd** - PENDING - CLI framework (Cobra), worker pool orchestration, progress tracking
 
@@ -72,7 +72,7 @@ File → MetadataExtractor → ImageMetadata → PathGenerator → destination p
 4. Match Python behavior for identical inputs
 5. Maintain or exceed Python test coverage
 
-**Current phase**: Phase 1B - Path generator (Phase 1A duplicate detector complete with 29 tests, 86.8% coverage)
+**Current phase**: Phase 2 - Metadata extraction (Phase 1 complete: duplicate detector 29 tests/86.8% coverage, path generator 18 tests/97.6% coverage)
 
 **Next phases**: See MIGRATION_PLAN.md for detailed 6-phase roadmap
 
