@@ -18,8 +18,14 @@ import (
 
 // ValidExtensions lists all supported image and video file extensions
 var ValidExtensions = []string{
-	"cr2", "crw", "dcr", "dng", "jpg", "jpeg",
-	"mov", "mp4", "nef", "png", "raw", "tiff",
+	// Standard images
+	"jpg", "jpeg", "png", "tiff", "tif",
+	// RAW formats
+	"arw", "cr2", "crw", "dcr", "dng", "mrw", "nef", "nrw",
+	"orf", "pef", "ptx", "raw", "rw2", "rwl", "srf", "sr2",
+	"srw", "x3f",
+	// Video formats
+	"mov", "mp4", "m4v", "avi", "mpg", "mpeg",
 }
 
 // RawExtensions lists all RAW image file extensions

@@ -1,0 +1,223 @@
+.TH SORTPICS 1 "October 2025" "sortpics 0.1.0" "User Commands"
+.SH NAME
+sortpics \- organize photos and videos by EXIF metadata into chronological structure
+.SH SYNOPSIS
+.B sortpics
+[\fIOPTIONS\fR] \fISOURCE\fR... \fIDESTINATION\fR
+.br
+.B sortpics verify
+[\fIOPTIONS\fR] \fIDIRECTORY\fR...
+.SH DESCRIPTION
+.B sortpics
+organizes photos and videos into a chronological directory structure based on EXIF metadata.
+Files are renamed with datetime, camera make/model, and organized into year/month/day directories.
+.PP
+The tool extracts metadata using ExifTool with a fallback hierarchy:
+EXIF DateTimeOriginal → QuickTime CreateDate → filename pattern → file modification time.
+.PP
+Duplicate detection uses SHA256 content hashing to skip identical files and resolve
+filename collisions with _N suffixes.
+.SH OPTIONS
+.SS "Operation Mode (required)"
+.TP
+.BR \-c ", " \-\-copy
+Copy files, leaving originals in place
+.TP
+.BR \-m ", " \-\-move
+Move files, removing originals after successful copy
+.SS "General Options"
+.TP
+.BR \-\-dry\-run ", " \-\-pretend
+Preview operations without executing them
+.TP
+.BR \-r ", " \-\-recursive
+Process subdirectories recursively
+.TP
+.BR \-C ", " \-\-clean
+Remove empty directories after move (requires \fB\-\-move\fR)
+.TP
+.BR \-v ", " \-\-verbose
+Increase verbosity. Can be repeated (\fB\-v\fR, \fB\-vv\fR, \fB\-vvv\fR)
+.TP
+.BR \-w ", " \-\-workers " \fIN\fR"
+Number of worker goroutines (default: CPU count)
+.SS "Path Options"
+.TP
+.BR \-\-raw\-path " \fIPATH\fR"
+Separate destination path for RAW files
+.SS "Naming Options"
+.TP
+.BR \-p ", " \-\-precision " \fIN\fR"
+Subsecond precision in digits (default: 6)
+.TP
+.BR \-\-old\-naming
+Use old naming format without make/model separator
+.SS "Time Adjustment"
+.TP
+.BR \-\-time\-adjust " \fIHH:MM:SS\fR"
+Adjust time (positive or negative, e.g., \-05:00:00)
+.TP
+.BR \-\-day\-adjust " \fIN\fR"
+Adjust days (positive or negative integer)
+.SS "Metadata Options"
+.TP
+.BR \-\-album " \fINAME\fR"
+Set XMP:Album metadata on processed files
+.TP
+.BR \-\-album\-from\-directory
+Use parent directory name as album
+.TP
+.BR \-t ", " \-\-tag " \fIKEYWORD\fR"
+Add keyword tag (can be repeated)
+.SH COMMANDS
+.TP
+.B verify
+Verify that archive filenames match EXIF metadata
+.TP
+.B verify \-\-fix
+Verify and automatically rename mismatched files
+.SH OUTPUT FORMAT
+.SS Filename
+\fBYYYYMMDD\-HHMMSS.subsec_Make\-Model.ext\fR
+.PP
+Example: 20240315\-143052.123456_Canon\-EOS5D.jpg
+.SS Directory Structure
+\fBYYYY/MM/YYYY\-MM\-DD/\fR
+.PP
+Example: 2024/03/2024\-03\-15/
+.SS Collision Resolution
+Duplicate content: skipped
+.br
+Filename collision: appended with _N (e.g., filename_2.jpg)
+.SH SUPPORTED FORMATS
+.SS Images
+JPEG (.jpg, .jpeg), PNG (.png), TIFF (.tiff, .tif)
+.SS RAW Formats
+Canon (.cr2, .crw), Nikon (.nef, .nrw), Sony (.arw, .srf, .sr2),
+.br
+Adobe/Leica (.dng), Olympus (.orf), Pentax (.pef, .ptx),
+.br
+Panasonic (.raw, .rw2), Samsung (.srw), Sigma (.x3f), and more
+.SS Video
+MP4 (.mp4, .m4v), QuickTime (.mov), AVI (.avi), MPEG (.mpg, .mpeg)
+.SH EXAMPLES
+.SS Basic Usage
+.PP
+Preview what would happen (recommended first step):
+.RS
+.nf
+sortpics \-\-copy \-\-dry\-run \-v /sdcard /archive
+.fi
+.RE
+.PP
+Copy files:
+.RS
+.nf
+sortpics \-\-copy \-\-recursive /sdcard /archive
+.fi
+.RE
+.PP
+Move files with cleanup:
+.RS
+.nf
+sortpics \-\-move \-\-recursive \-\-clean /sdcard /archive
+.fi
+.RE
+.SS Advanced Usage
+.PP
+Separate RAW files:
+.RS
+.nf
+sortpics \-\-copy \-\-recursive \\
+  \-\-raw\-path /archive/raw \\
+  /sdcard /archive
+.fi
+.RE
+.PP
+Set album metadata:
+.RS
+.nf
+sortpics \-\-copy \-\-album "Vacation 2024" /import /archive
+.fi
+.RE
+.PP
+Fix camera timezone (subtract 5 hours):
+.RS
+.nf
+sortpics \-\-copy \-\-time\-adjust \-05:00:00 /import /archive
+.fi
+.RE
+.SS Verification
+.PP
+Check archive integrity:
+.RS
+.nf
+sortpics verify /archive
+.fi
+.RE
+.PP
+Find and fix mismatches:
+.RS
+.nf
+sortpics verify \-\-fix /archive
+.fi
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Success
+.TP
+.B 1
+Error (invalid arguments, file errors, etc.)
+.TP
+.B 255
+ExifTool not found
+.SH FILES
+.TP
+.I ~/.local/bin/sortpics
+Default installation location (recommended)
+.TP
+.I $GOPATH/bin/sortpics
+Alternative installation location
+.SH ENVIRONMENT
+.TP
+.B PATH
+Must include ExifTool binary location
+.SH DEPENDENCIES
+.TP
+.B ExifTool
+Required for metadata extraction. Install via:
+.br
+macOS: \fBbrew install exiftool\fR
+.br
+Ubuntu: \fBsudo apt\-get install libimage\-exiftool\-perl\fR
+.br
+Windows: Download from https://exiftool.org/
+.SH NOTES
+.SS Performance
+Optimal worker count matches CPU core count. More workers show diminishing returns.
+Progress bar auto\-hides in verbose mode (\fB\-v\fR).
+.SS Safety
+Always test with \fB\-\-dry\-run\fR first. The tool uses atomic operations with
+temporary files and automatic cleanup on errors.
+.SS Duplicate Detection
+Content\-based SHA256 hashing. Files with identical content but different names
+are detected as duplicates. Similar but non\-identical files are not duplicates.
+.SH BUGS
+Report bugs at: https://github.com/chris/sortpics\-go/issues
+.SH AUTHOR
+Written as a Go port of the Python sortpics tool.
+.SH SEE ALSO
+.BR exiftool (1)
+.PP
+Project documentation: https://github.com/chris/sortpics\-go
+.PP
+Shell completion:
+.RS
+.nf
+sortpics completion bash
+sortpics completion zsh
+sortpics completion fish
+sortpics completion powershell
+.fi
+.RE
