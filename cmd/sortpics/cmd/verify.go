@@ -42,6 +42,11 @@ func init() {
 }
 
 func runVerify(cmd *cobra.Command, args []string) error {
+	// Check if ExifTool is installed
+	if err := checkExifTool(); err != nil {
+		return err
+	}
+
 	dirs := args
 
 	fmt.Printf("Verifying directories: %v\n", dirs)

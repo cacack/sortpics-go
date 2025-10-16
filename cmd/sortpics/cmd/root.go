@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
+	"syscall"
 
 	"github.com/alitto/pond"
 	"github.com/chris/sortpics-go/internal/rename"
@@ -107,6 +111,11 @@ func init() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	// Check if ExifTool is installed
+	if err := checkExifTool(); err != nil {
+		return err
+	}
+
 	// Validate flags
 	if !copyMode && !moveMode {
 		return fmt.Errorf("must specify either --copy or --move")
@@ -126,6 +135,19 @@ func run(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("source directory does not exist: %s", src)
 		}
 	}
+
+	// Setup signal handling for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		fmt.Fprintln(os.Stderr, "\nReceived interrupt signal. Canceling...")
+		cancel()
+	}()
 
 	// Convert day adjust to string if needed
 	dayAdjustStr := ""
@@ -181,7 +203,7 @@ func run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Found %d files to process\n", len(files))
 
 	// Process files
-	stats, err := processFiles(files, destDir, cfg, numWorkers, verbose)
+	stats, err := processFiles(ctx, files, destDir, cfg, numWorkers, verbose)
 	if err != nil {
 		return err
 	}
@@ -272,8 +294,23 @@ func collectFiles(sourceDirs []string, recursive bool, verbose int) ([]string, e
 	return files, nil
 }
 
+// checkExifTool verifies that exiftool is installed and available
+func checkExifTool() error {
+	_, err := exec.LookPath("exiftool")
+	if err != nil {
+		return fmt.Errorf(`exiftool not found. Please install it first:
+
+macOS:    brew install exiftool
+Ubuntu:   sudo apt-get install libimage-exiftool-perl
+Windows:  Download from https://exiftool.org/
+
+After installation, verify with: exiftool -ver`)
+	}
+	return nil
+}
+
 // processFiles processes all files using a worker pool
-func processFiles(files []string, destDir string, cfg *config.ProcessingConfig, workers int, verbose int) (*Stats, error) {
+func processFiles(ctx context.Context, files []string, destDir string, cfg *config.ProcessingConfig, workers int, verbose int) (*Stats, error) {
 	stats := &Stats{}
 
 	// Create progress bar (only if not verbose)
@@ -295,12 +332,36 @@ func processFiles(files []string, destDir string, cfg *config.ProcessingConfig, 
 
 	// Create worker pool with bounded queue
 	pool := pond.New(workers, len(files))
-	defer pool.StopAndWait()
+
+	// Monitor context cancellation
+	go func() {
+		<-ctx.Done()
+		pool.StopAndWait()
+	}()
 
 	// Process each file
 	for _, file := range files {
 		file := file // Capture for closure
+
+		// Check if context is canceled before submitting
+		select {
+		case <-ctx.Done():
+			pool.StopAndWait()
+			if bar != nil {
+				bar.Finish()
+			}
+			return stats, fmt.Errorf("processing canceled by user")
+		default:
+		}
+
 		pool.Submit(func() {
+			// Check if context is canceled
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			if err := processFile(file, destDir, cfg, stats, verbose); err != nil {
 				atomic.AddInt64(&stats.Errors, 1)
 				if verbose > 0 {
@@ -314,12 +375,17 @@ func processFiles(files []string, destDir string, cfg *config.ProcessingConfig, 
 		})
 	}
 
-	// Wait for all tasks to complete
+	// Wait for all tasks to complete (or cancellation)
 	pool.StopAndWait()
 
 	// Finish progress bar
 	if bar != nil {
 		bar.Finish()
+	}
+
+	// Check if we were canceled
+	if ctx.Err() != nil {
+		return stats, fmt.Errorf("processing canceled by user")
 	}
 
 	return stats, nil
