@@ -124,8 +124,8 @@ func (m *MetadataExtractor) getMetadata(filePath string) (map[string]interface{}
 // 3. Datetime pattern in filename
 // 4. File ctime
 func (m *MetadataExtractor) parseDatetime(filePath string, rawMetadata map[string]interface{}, fileStat os.FileInfo) *time.Time {
-	// Try EXIF datetime fields
-	for _, key := range []string{"EXIF:DateTimeOriginal", "EXIF:ModifyDate"} {
+	// Try EXIF datetime fields (with and without EXIF: prefix)
+	for _, key := range []string{"EXIF:DateTimeOriginal", "DateTimeOriginal", "EXIF:ModifyDate", "ModifyDate"} {
 		if dateTimeRaw, ok := rawMetadata[key]; ok {
 			if dateTimeStr, ok := dateTimeRaw.(string); ok {
 				// Parse base datetime: "2024:01:15 12:30:45"
@@ -134,11 +134,22 @@ func (m *MetadataExtractor) parseDatetime(filePath string, rawMetadata map[strin
 					continue
 				}
 
-				// Try to get subsecond precision and add it
-				if subsec, ok := rawMetadata["EXIF:SubSecTimeOriginal"]; ok {
-					if subsecStr, ok := subsec.(string); ok {
-						microseconds := parseSubseconds(subsecStr)
-						dt = dt.Add(time.Duration(microseconds) * time.Microsecond)
+				// Try to get subsecond precision and add it (with and without EXIF: prefix)
+				for _, subsecKey := range []string{"EXIF:SubSecTimeOriginal", "SubSecTimeOriginal"} {
+					if subsec, ok := rawMetadata[subsecKey]; ok {
+						// Handle both string and numeric types
+						var subsecStr string
+						switch v := subsec.(type) {
+						case string:
+							subsecStr = v
+						case int, int64, float64:
+							subsecStr = fmt.Sprintf("%v", v)
+						}
+						if subsecStr != "" {
+							microseconds := parseSubseconds(subsecStr)
+							dt = dt.Add(time.Duration(microseconds) * time.Microsecond)
+							break
+						}
 					}
 				}
 
@@ -147,11 +158,13 @@ func (m *MetadataExtractor) parseDatetime(filePath string, rawMetadata map[strin
 		}
 	}
 
-	// Try QuickTime (MOV files)
-	if dateTimeRaw, ok := rawMetadata["QuickTime:CreateDate"]; ok {
-		if dateTimeStr, ok := dateTimeRaw.(string); ok {
-			if dt, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
-				return &dt
+	// Try QuickTime (MOV files) (with and without QuickTime: prefix)
+	for _, key := range []string{"QuickTime:CreateDate", "CreateDate"} {
+		if dateTimeRaw, ok := rawMetadata[key]; ok {
+			if dateTimeStr, ok := dateTimeRaw.(string); ok {
+				if dt, err := time.Parse("2006:01:02 15:04:05", dateTimeStr); err == nil {
+					return &dt
+				}
 			}
 		}
 	}
@@ -197,18 +210,12 @@ func (m *MetadataExtractor) parseDatetime(filePath string, rawMetadata map[strin
 func (m *MetadataExtractor) parseMake(rawMetadata map[string]interface{}) string {
 	var make string
 
-	// Try EXIF:Make first
-	if makeRaw, ok := rawMetadata["EXIF:Make"]; ok {
-		if makeStr, ok := makeRaw.(string); ok {
-			make = makeStr
-		}
-	}
-
-	// Try MakerNotes:Make as fallback
-	if make == "" {
-		if makeRaw, ok := rawMetadata["MakerNotes:Make"]; ok {
+	// Try various make keys (with and without prefixes)
+	for _, key := range []string{"EXIF:Make", "Make", "MakerNotes:Make"} {
+		if makeRaw, ok := rawMetadata[key]; ok {
 			if makeStr, ok := makeRaw.(string); ok {
 				make = makeStr
+				break
 			}
 		}
 	}
@@ -243,18 +250,12 @@ func (m *MetadataExtractor) parseMake(rawMetadata map[string]interface{}) string
 func (m *MetadataExtractor) parseModel(make string, rawMetadata map[string]interface{}) string {
 	var model string
 
-	// Try EXIF:Model first
-	if modelRaw, ok := rawMetadata["EXIF:Model"]; ok {
-		if modelStr, ok := modelRaw.(string); ok {
-			model = modelStr
-		}
-	}
-
-	// Try MakerNotes:Model as fallback
-	if model == "" {
-		if modelRaw, ok := rawMetadata["MakerNotes:Model"]; ok {
+	// Try various model keys (with and without prefixes)
+	for _, key := range []string{"EXIF:Model", "Model", "MakerNotes:Model"} {
+		if modelRaw, ok := rawMetadata[key]; ok {
 			if modelStr, ok := modelRaw.(string); ok {
 				model = modelStr
+				break
 			}
 		}
 	}
