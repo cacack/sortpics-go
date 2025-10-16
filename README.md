@@ -142,15 +142,17 @@ exiftool -ver
 git clone https://github.com/cacack/sortpics-go.git
 cd sortpics-go
 
-# Install to ~/.local/bin (recommended)
+# Install to ~/.local/bin (builds automatically, recommended)
 make install
 
-# Or install to GOPATH/bin
+# Or install to GOPATH/bin (builds automatically)
 make install-global
 
 # Verify installation
 sortpics --version
 ```
+
+**Note**: Both `make install` and `make install-global` automatically build the binary first, so no separate build step is needed.
 
 ### Build Options
 
