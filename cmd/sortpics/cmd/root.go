@@ -2,9 +2,16 @@ package cmd
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
+	"sync/atomic"
 
+	"github.com/alitto/pond"
+	"github.com/chris/sortpics-go/internal/rename"
+	"github.com/chris/sortpics-go/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -119,20 +126,233 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Convert day adjust to string if needed
+	dayAdjustStr := ""
+	if dayAdjust != 0 {
+		dayAdjustStr = fmt.Sprintf("%d", dayAdjust)
+	}
+
+	// Build processing config
+	cfg := &config.ProcessingConfig{
+		OldNaming:    oldNaming,
+		RawPath:      rawPath,
+		Move:         moveMode,
+		Precision:    precision,
+		DryRun:       dryRun,
+		TimeAdjust:   timeAdjust,
+		DayAdjust:    dayAdjustStr,
+		Tags:         tags,
+		Album:        album,
+		AlbumFromDir: albumFromDir,
+	}
+
 	if dryRun {
 		fmt.Println("DRY RUN - no files will be modified")
 	}
 
-	// TODO: Implement actual processing logic
-	fmt.Printf("Sources: %v\n", sourceDirs)
-	fmt.Printf("Destination: %s\n", destDir)
-	fmt.Printf("Operation: ")
-	if copyMode {
-		fmt.Println("copy")
-	} else {
-		fmt.Println("move")
+	// Print operation summary
+	if verbose > 0 {
+		fmt.Printf("Operation: ")
+		if copyMode {
+			fmt.Println("copy")
+		} else {
+			fmt.Println("move")
+		}
+		fmt.Printf("Workers: %d\n", numWorkers)
+		fmt.Printf("Source(s): %v\n", sourceDirs)
+		fmt.Printf("Destination: %s\n", destDir)
+		if rawPath != "" {
+			fmt.Printf("RAW path: %s\n", rawPath)
+		}
 	}
-	fmt.Printf("Workers: %d\n", numWorkers)
 
-	return fmt.Errorf("not implemented yet - coming soon!")
+	// Collect files to process
+	files, err := collectFiles(sourceDirs, recursive, verbose)
+	if err != nil {
+		return err
+	}
+
+	if len(files) == 0 {
+		fmt.Println("No files to process")
+		return nil
+	}
+
+	fmt.Printf("Found %d files to process\n", len(files))
+
+	// Process files
+	stats, err := processFiles(files, destDir, cfg, numWorkers, verbose)
+	if err != nil {
+		return err
+	}
+
+	// Print summary
+	printSummary(stats, verbose)
+
+	return nil
+}
+
+// Stats tracks processing statistics
+type Stats struct {
+	Processed  int64
+	Duplicates int64
+	Skipped    int64
+	Errors     int64
+}
+
+// collectFiles walks source directories and collects all supported image/video files
+func collectFiles(sourceDirs []string, recursive bool, verbose int) ([]string, error) {
+	var files []string
+	seen := make(map[string]bool) // Deduplicate if multiple sources overlap
+
+	for _, sourceDir := range sourceDirs {
+		if recursive {
+			err := filepath.WalkDir(sourceDir, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if d.IsDir() {
+					return nil
+				}
+
+				// Check if file has valid extension
+				ext := strings.TrimPrefix(filepath.Ext(path), ".")
+				if rename.IsValidExtension(ext) {
+					absPath, err := filepath.Abs(path)
+					if err != nil {
+						return err
+					}
+					if !seen[absPath] {
+						files = append(files, absPath)
+						seen[absPath] = true
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to walk directory %s: %w", sourceDir, err)
+			}
+		} else {
+			// Non-recursive: only process files directly in the directory
+			entries, err := os.ReadDir(sourceDir)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read directory %s: %w", sourceDir, err)
+			}
+
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+
+				path := filepath.Join(sourceDir, entry.Name())
+				ext := strings.TrimPrefix(filepath.Ext(path), ".")
+				if rename.IsValidExtension(ext) {
+					absPath, err := filepath.Abs(path)
+					if err != nil {
+						return nil, err
+					}
+					if !seen[absPath] {
+						files = append(files, absPath)
+						seen[absPath] = true
+					}
+				}
+			}
+		}
+	}
+
+	return files, nil
+}
+
+// processFiles processes all files using a worker pool
+func processFiles(files []string, destDir string, cfg *config.ProcessingConfig, workers int, verbose int) (*Stats, error) {
+	stats := &Stats{}
+
+	// Create worker pool with bounded queue
+	pool := pond.New(workers, len(files))
+	defer pool.StopAndWait()
+
+	// Process each file
+	for _, file := range files {
+		file := file // Capture for closure
+		pool.Submit(func() {
+			if err := processFile(file, destDir, cfg, stats, verbose); err != nil {
+				atomic.AddInt64(&stats.Errors, 1)
+				if verbose > 0 {
+					fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", file, err)
+				}
+			}
+		})
+	}
+
+	// Wait for all tasks to complete
+	pool.StopAndWait()
+
+	return stats, nil
+}
+
+// processFile processes a single file
+func processFile(file string, destDir string, cfg *config.ProcessingConfig, stats *Stats, verbose int) error {
+	// Create ImageRename instance
+	ir, err := rename.NewImageRename(file, destDir, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to create rename instance: %w", err)
+	}
+	defer ir.Close()
+
+	// Check if valid extension
+	if !ir.IsValidExtension() {
+		atomic.AddInt64(&stats.Skipped, 1)
+		if verbose > 1 {
+			fmt.Printf("Skipping (unsupported): %s\n", file)
+		}
+		return nil
+	}
+
+	// Parse metadata
+	if err := ir.ParseMetadata(); err != nil {
+		return fmt.Errorf("failed to parse metadata: %w", err)
+	}
+
+	// Check if duplicate
+	if ir.IsDuplicate() {
+		atomic.AddInt64(&stats.Duplicates, 1)
+		if verbose > 1 {
+			fmt.Printf("Skipping (duplicate): %s\n", file)
+		}
+		return nil
+	}
+
+	// Show what we're doing
+	if verbose > 0 {
+		operation := "Copying"
+		if cfg.Move {
+			operation = "Moving"
+		}
+		if cfg.DryRun {
+			operation = "[DRY RUN] " + operation
+		}
+		fmt.Printf("%s: %s -> %s\n", operation, file, ir.GetDestination())
+	}
+
+	// Perform the operation
+	if err := ir.Perform(); err != nil {
+		return fmt.Errorf("failed to perform operation: %w", err)
+	}
+
+	atomic.AddInt64(&stats.Processed, 1)
+	return nil
+}
+
+// printSummary prints processing statistics
+func printSummary(stats *Stats, verbose int) {
+	fmt.Println("\nSummary:")
+	fmt.Printf("  Processed:  %d\n", stats.Processed)
+	if stats.Duplicates > 0 {
+		fmt.Printf("  Duplicates: %d\n", stats.Duplicates)
+	}
+	if stats.Skipped > 0 {
+		fmt.Printf("  Skipped:    %d\n", stats.Skipped)
+	}
+	if stats.Errors > 0 {
+		fmt.Printf("  Errors:     %d\n", stats.Errors)
+	}
 }
