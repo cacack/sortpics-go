@@ -271,3 +271,20 @@ func TestGeneratePathOldNaming(t *testing.T) {
 	expected := filepath.Join("/archive", "2024", "01", "2024-01-15", "20240115-123045.00_CanonEOS5d.jpg")
 	assert.Equal(t, expected, path)
 }
+
+// TestGenerateFilenamePrecisionGreaterThan6 tests filename generation with precision > 6
+func TestGenerateFilenamePrecisionGreaterThan6(t *testing.T) {
+	dt := time.Date(2024, 1, 15, 12, 30, 45, 123456000, time.UTC)
+	metadata := &config.ImageMetadata{
+		DateTime: &dt,
+		Make:     "Canon",
+		Model:    "EOS5d",
+	}
+	// Use precision of 8 (greater than max 6)
+	generator := New(8, false)
+
+	filename := generator.GenerateFilename(metadata, "jpg", 0)
+
+	// Should return full 6-digit subsecond precision (maximum available)
+	assert.Equal(t, "20240115-123045.123456_Canon-EOS5d.jpg", filename)
+}

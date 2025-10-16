@@ -315,3 +315,33 @@ func BenchmarkDatePattern(b *testing.B) {
 		DATE_PATTERN.FindStringSubmatch(filename)
 	}
 }
+
+// TestParseSubsecondsLongString tests parseSubseconds with string > 6 digits
+func TestParseSubsecondsLongString(t *testing.T) {
+	// Test with 9-digit subsecond string (should truncate to 6)
+	result := parseSubseconds("123456789")
+	expected := 123456 // First 6 digits as microseconds
+	assert.Equal(t, expected, result)
+}
+
+// TestParseSubsecondsShortString tests parseSubseconds with string < 6 digits
+func TestParseSubsecondsShortString(t *testing.T) {
+	// Test with 3-digit subsecond string (should pad to 6)
+	result := parseSubseconds("123")
+	expected := 123000 // Padded with zeros
+	assert.Equal(t, expected, result)
+}
+
+// TestParseSubsecondsExactly6Digits tests parseSubseconds with exactly 6 digits
+func TestParseSubsecondsExactly6Digits(t *testing.T) {
+	result := parseSubseconds("123456")
+	expected := 123456
+	assert.Equal(t, expected, result)
+}
+
+// TestCloseWithNilExtractor tests Close method with nil extractor
+func TestCloseWithNilExtractor(t *testing.T) {
+	extractor := &MetadataExtractor{et: nil}
+	err := extractor.Close()
+	require.NoError(t, err)
+}
