@@ -188,6 +188,15 @@ func run(cmd *cobra.Command, args []string) error {
 	// Print summary
 	printSummary(stats, verbose)
 
+	// Clean empty directories if requested (only for move operations)
+	if clean && moveMode && !dryRun {
+		fmt.Println("\nCleaning empty directories...")
+		cleanStats := cleanEmptyDirectories(sourceDirs, recursive, verbose)
+		if cleanStats.Removed > 0 {
+			fmt.Printf("Removed %d empty directories\n", cleanStats.Removed)
+		}
+	}
+
 	return nil
 }
 
@@ -355,4 +364,72 @@ func printSummary(stats *Stats, verbose int) {
 	if stats.Errors > 0 {
 		fmt.Printf("  Errors:     %d\n", stats.Errors)
 	}
+}
+
+// CleanStats tracks directory cleaning statistics
+type CleanStats struct {
+	Checked int
+	Removed int
+}
+
+// cleanEmptyDirectories removes empty directories from source paths
+func cleanEmptyDirectories(sourceDirs []string, recursive bool, verbose int) *CleanStats {
+	stats := &CleanStats{}
+
+	for _, sourceDir := range sourceDirs {
+		if recursive {
+			// Walk bottom-up to remove nested empty directories
+			cleanEmptyDirsRecursive(sourceDir, stats, verbose)
+		} else {
+			// Only check the source directory itself
+			if isEmpty, _ := isDirEmpty(sourceDir); isEmpty {
+				if verbose > 0 {
+					fmt.Printf("Removing empty directory: %s\n", sourceDir)
+				}
+				if err := os.Remove(sourceDir); err == nil {
+					stats.Removed++
+				}
+				stats.Checked++
+			}
+		}
+	}
+
+	return stats
+}
+
+// cleanEmptyDirsRecursive recursively removes empty directories
+func cleanEmptyDirsRecursive(dir string, stats *CleanStats, verbose int) {
+	// Read directory contents
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	// First, recursively clean subdirectories
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subdir := filepath.Join(dir, entry.Name())
+			cleanEmptyDirsRecursive(subdir, stats, verbose)
+		}
+	}
+
+	// Now check if this directory is empty and remove it
+	stats.Checked++
+	if isEmpty, _ := isDirEmpty(dir); isEmpty {
+		if verbose > 0 {
+			fmt.Printf("Removing empty directory: %s\n", dir)
+		}
+		if err := os.Remove(dir); err == nil {
+			stats.Removed++
+		}
+	}
+}
+
+// isDirEmpty checks if a directory is empty
+func isDirEmpty(dir string) (bool, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false, err
+	}
+	return len(entries) == 0, nil
 }
