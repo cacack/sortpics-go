@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/barasher/go-exiftool"
-	"github.com/chris/sortpics-go/internal/duplicate"
-	"github.com/chris/sortpics-go/internal/metadata"
-	"github.com/chris/sortpics-go/internal/pathgen"
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/internal/duplicate"
+	"github.com/cacack/sortpics-go/internal/metadata"
+	"github.com/cacack/sortpics-go/internal/pathgen"
+	"github.com/cacack/sortpics-go/pkg/config"
 )
 
 // ValidExtensions lists all supported image and video file extensions

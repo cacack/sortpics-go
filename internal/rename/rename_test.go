@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/pkg/config"
 )
 
 // BenchmarkCopyMode benchmarks copy operation with worker pool

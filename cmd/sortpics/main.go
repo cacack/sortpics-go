@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/chris/sortpics-go/cmd/sortpics/cmd"
+	"github.com/cacack/sortpics-go/cmd/sortpics/cmd"
 )
 
 func main() {

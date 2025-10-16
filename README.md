@@ -139,7 +139,7 @@ exiftool -ver
 
 ```bash
 # Clone repository
-git clone https://github.com/chris/sortpics-go.git
+git clone https://github.com/cacack/sortpics-go.git
 cd sortpics-go
 
 # Install to ~/.local/bin (recommended)
@@ -413,7 +413,7 @@ sortpics --copy --precision 0 /source /dest
 
 ```bash
 # Clone and setup
-git clone https://github.com/chris/sortpics-go.git
+git clone https://github.com/cacack/sortpics-go.git
 cd sortpics-go
 
 # Download dependencies

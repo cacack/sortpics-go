@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/pkg/config"
 )
 
 // PathGenerator generates destination paths and filenames for organized photo archives.

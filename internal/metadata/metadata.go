@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/barasher/go-exiftool"
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/pkg/config"
 )
 
 // DATE_PATTERN matches filenames like: YYYYMMDD-HHMMSS.subsec

@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 
 	"github.com/alitto/pond"
-	"github.com/chris/sortpics-go/internal/metadata"
-	"github.com/chris/sortpics-go/internal/pathgen"
-	"github.com/chris/sortpics-go/internal/rename"
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/internal/metadata"
+	"github.com/cacack/sortpics-go/internal/pathgen"
+	"github.com/cacack/sortpics-go/internal/rename"
+	"github.com/cacack/sortpics-go/pkg/config"
 	"github.com/spf13/cobra"
 )
 

@@ -14,8 +14,8 @@ import (
 	"syscall"
 
 	"github.com/alitto/pond"
-	"github.com/chris/sortpics-go/internal/rename"
-	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/cacack/sortpics-go/internal/rename"
+	"github.com/cacack/sortpics-go/pkg/config"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
