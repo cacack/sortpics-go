@@ -115,29 +115,242 @@ Based on the Python architecture (95% test coverage, clean separation of concern
 - `errgroup`: Clean but no bounded queue
 - `ants`: High performance but less convenient API
 
-## Development
+## Installation
 
 ### Prerequisites
 
-```bash
-# Go 1.21+ required
-go version
+**ExifTool** - Required for metadata extraction
 
-# ExifTool required for metadata extraction
-# macOS:
+```bash
+# macOS
 brew install exiftool
 
-# Ubuntu/Debian:
+# Ubuntu/Debian
 sudo apt-get install libimage-exiftool-perl
 
-# Verify installation:
+# Windows
+# Download from https://exiftool.org/
+
+# Verify installation
 exiftool -ver
 ```
 
-### Setup
+### Install from Source
 
 ```bash
 # Clone repository
+git clone https://github.com/chris/sortpics-go.git
+cd sortpics-go
+
+# Install to ~/.local/bin (recommended)
+make install
+
+# Or install to GOPATH/bin
+make install-global
+
+# Verify installation
+sortpics --version
+```
+
+### Build Options
+
+```bash
+# Build for current platform
+make build                # Binary in ./bin/sortpics
+
+# Build for all platforms
+make build-all            # Binaries in ./dist/
+                          # Linux (amd64, arm64)
+                          # macOS (amd64, arm64)
+                          # Windows (amd64, arm64)
+
+# Run tests
+make test
+
+# Run benchmarks
+make bench
+
+# Generate coverage report
+make test-coverage        # Creates coverage.html
+```
+
+## Quick Start
+
+### Basic Usage
+
+```bash
+# Preview what would happen (always start with this!)
+sortpics --copy --dry-run -v /source/photos /archive
+
+# Actually copy files
+sortpics --copy /source/photos /archive
+
+# Move files (removes originals)
+sortpics --move /source/photos /archive
+
+# Process subdirectories recursively
+sortpics --copy --recursive /source/photos /archive
+```
+
+### Common Workflows
+
+```bash
+# Organize SD card to archive
+sortpics --copy --recursive -v /Volumes/SDCARD /Users/me/Photos
+
+# Move with progress bar (no -v flag)
+sortpics --move --recursive /import /archive
+
+# Separate RAW files
+sortpics --copy --recursive \
+  --raw-path /archive/raw \
+  /sdcard /archive
+
+# Remove empty directories after move
+sortpics --move --recursive --clean /sdcard /archive
+
+# Set album name for batch
+sortpics --copy --album "Summer Vacation 2024" /import /archive
+
+# Fix camera timezone (subtract 5 hours)
+sortpics --copy --time-adjust -05:00:00 /import /archive
+
+# Adjust by days (add 1 day)
+sortpics --copy --day-adjust 1 /import /archive
+```
+
+### Archive Verification
+
+```bash
+# Check if filenames match EXIF data
+sortpics verify /archive
+
+# Find and report mismatches
+sortpics verify /archive 2>&1 | grep MISMATCH
+
+# Automatically fix mismatches
+sortpics verify --fix /archive
+```
+
+### Verbosity Levels
+
+```bash
+# Silent (progress bar only)
+sortpics --copy /source /dest
+
+# Basic info (-v)
+sortpics --copy -v /source /dest
+
+# Detailed (-vv)
+sortpics --copy -vv /source /dest
+
+# Debug (-vvv)
+sortpics --copy -vvv /source /dest
+```
+
+## Troubleshooting
+
+### ExifTool Not Found
+
+**Error**: `exiftool not found. Please install it first`
+
+**Solution**:
+```bash
+# macOS
+brew install exiftool
+
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install libimage-exiftool-perl
+
+# Verify
+exiftool -ver  # Should show version 12.00+
+```
+
+### No Files Processed
+
+**Issue**: `Found 0 files to process`
+
+**Possible causes**:
+1. Wrong source directory path
+2. No supported file extensions in directory
+3. Missing `--recursive` flag for subdirectories
+
+**Solution**:
+```bash
+# Check directory exists and has files
+ls -la /source/directory
+
+# Use recursive flag for subdirectories
+sortpics --copy --recursive /source /dest
+
+# Check supported extensions
+sortpics --help | grep -A 20 "Features"
+```
+
+### Permission Denied
+
+**Error**: `failed to create destination directory: permission denied`
+
+**Solution**:
+```bash
+# Check destination is writable
+ls -ld /destination/path
+
+# Create destination first
+mkdir -p /destination/path
+
+# Or use sudo (not recommended)
+sudo sortpics --copy /source /dest
+```
+
+### Duplicates Not Detected
+
+**Issue**: Duplicate files are copied instead of skipped
+
+**Cause**: Duplicate detection is content-based (SHA256). Files with identical content but different names are detected. Files with similar but not identical content are not duplicates.
+
+**To verify**:
+```bash
+# Check if files are truly identical
+sha256sum file1.jpg file2.jpg
+```
+
+### Progress Bar Interferes with Logging
+
+**Solution**: Progress bar auto-hides in verbose mode
+```bash
+# Use -v to disable progress bar
+sortpics --copy -v /source /dest
+```
+
+### Cross-Filesystem Move Fails
+
+**Error**: `invalid cross-device link`
+
+**Solution**: This is handled automatically by falling back to copy+delete. If you see this error, please report it as a bug.
+
+### Filename Too Long
+
+**Error**: `file name too long`
+
+**Cause**: Generated filename exceeds filesystem limits (usually 255 characters)
+
+**Solutions**:
+```bash
+# Use old naming format (shorter)
+sortpics --copy --old-naming /source /dest
+
+# Reduce subsecond precision
+sortpics --copy --precision 0 /source /dest
+```
+
+## Development
+
+### Setup Development Environment
+
+```bash
+# Clone and setup
 git clone https://github.com/chris/sortpics-go.git
 cd sortpics-go
 
@@ -147,30 +360,30 @@ make deps
 # Run tests
 make test
 
-# Build binary
-make build
+# Run with go run (faster iteration)
+make run-dev ARGS="--help"
 ```
 
-### Common Tasks
+### Common Development Tasks
 
 ```bash
-# Build and install
-make install
-
-# Run tests with coverage
-make test-coverage
-
-# Run linters (requires golangci-lint)
-make lint
-
 # Format code
 make fmt
 
-# Run directly (development)
-make run-dev ARGS="--help"
+# Run linters
+make lint               # Requires: brew install golangci-lint
 
-# Build and run
-make run ARGS="--dry-run --copy /source /dest"
+# Run specific test
+go test -v -run TestVerify ./cmd/sortpics/cmd/...
+
+# Run benchmarks
+make bench
+
+# Generate test fixtures
+make test-fixtures      # Requires exiftool
+
+# Clean build artifacts
+make clean
 ```
 
 ## Migration Status
