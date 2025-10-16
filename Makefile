@@ -1,4 +1,4 @@
-.PHONY: help build test lint fmt vet clean install run deps tidy check
+.PHONY: help build test lint fmt vet clean install run deps tidy check test-fixtures test-fixtures-clean
 
 # Default target
 .DEFAULT_GOAL := help
@@ -100,3 +100,18 @@ run: build
 run-dev:
 	@echo "Running with go run..."
 	$(GO) run $(CMD_PATH) $(ARGS)
+
+## test-fixtures: Generate test fixtures for integration tests
+test-fixtures:
+	@echo "Generating test fixtures..."
+	@which exiftool > /dev/null || (echo "exiftool not installed. Run: brew install exiftool" && exit 1)
+	@cd test/testdata && go run generate_fixtures.go
+	@echo "Test fixtures generated in test/testdata/"
+
+## test-fixtures-clean: Remove generated test fixtures
+test-fixtures-clean:
+	@echo "Removing test fixtures..."
+	@rm -rf test/testdata/basic test/testdata/mixed test/testdata/no_exif
+	@rm -rf test/testdata/special_makes test/testdata/collision test/testdata/video
+	@rm -f test/testdata/manifest.json
+	@echo "Test fixtures removed"

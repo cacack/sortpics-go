@@ -1,0 +1,84 @@
+{
+  "basic/test_001.jpg": {
+    "datetime": "2024-01-15T12:30:45.123456",
+    "make": "Canon",
+    "model": "Eos5d",
+    "expected_filename": "20240115-123045.123456_Canon-Eos5d.jpg",
+    "expected_path": "2024/01/2024-01-15/20240115-123045.123456_Canon-Eos5d.jpg"
+  },
+  "basic/test_002.jpg": {
+    "datetime": "2024-01-15T14:45:30.654321",
+    "make": "Nikon",
+    "model": "D850",
+    "expected_filename": "20240115-144530.654321_Nikon-D850.jpg",
+    "expected_path": "2024/01/2024-01-15/20240115-144530.654321_Nikon-D850.jpg"
+  },
+  "basic/test_003.jpg": {
+    "datetime": "2024-02-20T09:15:22.111111",
+    "make": "Sony",
+    "model": "A7Iii",
+    "expected_filename": "20240220-091522.111111_Sony-A7Iii.jpg",
+    "expected_path": "2024/02/2024-02-20/20240220-091522.111111_Sony-A7Iii.jpg"
+  },
+  "basic/test_004.jpg": {
+    "datetime": "2024-03-10T18:20:10.999999",
+    "make": "Fujifilm",
+    "model": "X-T4",
+    "expected_filename": "20240310-182010.999999_Fujifilm-X-T4.jpg",
+    "expected_path": "2024/03/2024-03-10/20240310-182010.999999_Fujifilm-X-T4.jpg"
+  },
+  "basic/test_005.jpg": {
+    "datetime": "2024-12-31T23:59:59.000000",
+    "make": "Olympus",
+    "model": "Om-DE-M1",
+    "expected_filename": "20241231-235959.000000_Olympus-Om-DE-M1.jpg",
+    "expected_path": "2024/12/2024-12-31/20241231-235959.000000_Olympus-Om-De-M1.jpg"
+  },
+  "collision/photo_a.jpg": {
+    "datetime": "2024-06-01T10:00:00.123456",
+    "make": "Canon",
+    "model": "Eos5d",
+    "expected_filename": "20240601-100000.123456_Canon-Eos5d.jpg",
+    "note": "First file with this datetime/camera"
+  },
+  "collision/photo_a_duplicate.jpg": {
+    "datetime": "2024-06-01T10:00:00.123456",
+    "make": "Canon",
+    "model": "Eos5d",
+    "expected_action": "skip",
+    "note": "Duplicate of photo_a.jpg"
+  },
+  "collision/photo_b.jpg": {
+    "datetime": "2024-06-01T10:00:00.123456",
+    "make": "Canon",
+    "model": "Eos5d",
+    "expected_filename": "20240601-100000.123456_Canon-Eos5d_1.jpg",
+    "note": "Different content, same datetime/camera -\u003e collision"
+  },
+  "no_exif/20240615-143022.123456_test.jpg": {
+    "datetime": "2024-06-15T14:30:22.123456",
+    "make": "Unknown",
+    "expected_filename": "20240615-143022.123456_Unknown.jpg",
+    "note": "Datetime extracted from filename"
+  },
+  "special_makes/htc_001.jpg": {
+    "datetime": "2024-04-10T12:00:00.000000",
+    "make": "HTC",
+    "model": "HtcOne",
+    "expected_filename": "20240410-1200.000000_HTC-HtcOne.jpg",
+    "note": "HTC Corporation -\u003e HTC"
+  },
+  "special_makes/lg_001.jpg": {
+    "datetime": "2024-04-10T12:05:00.000000",
+    "make": "LG",
+    "model": "LgG7",
+    "expected_filename": "20240410-1200.000000_LG-LgG7.jpg",
+    "note": "LG Electronics -\u003e LG"
+  },
+  "special_makes/rim_001.jpg": {
+    "datetime": "2024-04-10T12:10:00.000000",
+    "model": "BlackberryBold",
+    "expected_filename": "20240410-121000.000000_-BlackberryBold.jpg",
+    "note": "Research In Motion -\u003e filtered out"
+  }
+}
