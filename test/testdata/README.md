@@ -122,3 +122,10 @@ When processing these fixtures with sortpics:
 - EXIF subsecond precision is set correctly (6 digits)
 - Special characters are tested (spaces in model names)
 - Collision scenario includes both duplicate (same hash) and collision (different hash)
+
+## TODO: Enhanced Test Coverage
+
+Consider incorporating sample images from ExifTool's official test suite for more comprehensive testing:
+- **Source**: https://exiftool.org/sample_images.html
+- **Benefits**: Real-world images with diverse EXIF tags, RAW formats, video files, edge cases
+- **Use case**: Extended integration tests for format compatibility and metadata extraction accuracy

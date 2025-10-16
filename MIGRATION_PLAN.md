@@ -530,6 +530,14 @@ cd ../sortpics-go/internal/duplicate
 - Effective Go: https://go.dev/doc/effective_go
 - Go Testing: https://go.dev/doc/tutorial/add-a-test
 
+### Future Test Enhancements
+- **ExifTool Sample Images**: https://exiftool.org/sample_images.html
+  - Real-world test images with diverse EXIF tags
+  - RAW formats (CR2, NEF, DNG, ARW)
+  - Video files (MP4, MOV, AVI)
+  - Edge cases and unusual metadata
+  - Consider incorporating for extended integration testing
+
 ---
 
 **Last Updated**: October 14, 2025
