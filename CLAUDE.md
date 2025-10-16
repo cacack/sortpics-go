@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 sortpics-go is a Go port of a Python photo/video organization tool. It organizes media files into a chronological directory structure using EXIF metadata with a fallback hierarchy: EXIF → QuickTime → filename → filesystem.
 
-**Status**: Phase 2 complete (duplicate: 86.8%, pathgen: 97.6%, metadata: 73.3%). Ready for Phase 3 (file operations).
+**Status**: Phase 3 complete (duplicate: 86.8%, pathgen: 100.0%, metadata: 94.4%, rename: 81.1%). Overall: 90.6% coverage. Ready for Phase 4 (orchestration & CLI).
 
 ## Build & Test Commands
 

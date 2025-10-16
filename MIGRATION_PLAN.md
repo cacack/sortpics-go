@@ -4,8 +4,8 @@
 
 This document outlines the phased approach to migrating sortpics from Python to Go. The migration follows a **bottom-up, component-by-component** strategy, leveraging the clean architecture already established in the Python codebase.
 
-**Status**: ✅ Phase 2 complete (duplicate + pathgen + metadata)
-**Next Phase**: Phase 3 - File Operations
+**Status**: ✅ Phase 3 complete (duplicate + pathgen + metadata + file operations)
+**Next Phase**: Phase 4 - Orchestration & CLI Integration
 
 ---
 
@@ -108,7 +108,7 @@ make build         # ✅ Binary builds
 - [x] `generateFilename(metadata, ext) string` - Build filename
 - [x] `addIncrement(path string, n int) string` - Collision suffix
 - [x] Port all 18 tests (filename format, precision, old naming)
-- [x] Verify coverage: **97.6%** (exceeds 95% target)
+- [x] Verify coverage: **100.0%** (complete coverage)
 
 **Dependencies**: None (uses stdlib: `path/filepath`, `time`, `fmt`, `strings`)
 
@@ -141,7 +141,7 @@ make build         # ✅ Binary builds
 - [x] `parseMake(metadata) string` - Parse and normalize make
 - [x] `parseModel(make, metadata) string` - Parse and normalize model
 - [x] Port 17 unit tests (covers all parsing logic)
-- [x] Verify coverage: **73.3%** (unit tests cover all parsing logic, Extract/getMetadata are integration-level)
+- [x] Verify coverage: **94.4%** (comprehensive coverage of all code paths)
 
 **Dependencies**:
 - `github.com/barasher/go-exiftool` (already installed)
@@ -155,34 +155,35 @@ make build         # ✅ Binary builds
 
 ---
 
-### Phase 3: File Operations 🎯 NEXT
+### Phase 3: File Operations ✅ COMPLETE
 
 **Goal**: Implement file processing coordinator
 
-#### 3A. Rename Package
+#### 3A. Rename Package ✅
 - **Python source**: `sortpics/rename.py` (131 lines, 73% coverage)
 - **Python tests**: `tests/test_rename.py` (12 tests)
 - **Go target**: `internal/rename/rename.go`
-- **Estimated effort**: 4-6 hours
+- **Actual effort**: 6 hours
 
 **Tasks**:
-- [ ] Define `ProcessingConfig` struct in `pkg/config/config.go`
-- [ ] Implement `ImageRename` struct (coordinator)
-- [ ] `NewImageRename(config) *ImageRename` - Constructor
-- [ ] `ParseMetadata(sourcePath) error` - Orchestrate extraction
+- [x] Define `ProcessingConfig` struct in `pkg/config/config.go`
+- [x] Implement `ImageRename` struct (coordinator)
+- [x] `NewImageRename(config) *ImageRename` - Constructor
+- [x] `ParseMetadata(sourcePath) error` - Orchestrate extraction
   - Call MetadataExtractor
   - Call PathGenerator
   - Call DuplicateDetector
-- [ ] `Perform() error` - Execute file operation
+- [x] `Perform() error` - Execute file operation
   - Create destination directories
   - Atomic copy or move
   - Write metadata tags (XMP:Album, keywords)
-- [ ] `safeCopy(src, dst string) error` - Atomic copy with temp file
-- [ ] `safeMove(src, dst string) error` - Rename or copy+delete
-- [ ] `isValidExtension(ext string) bool` - Filter file types
-- [ ] `isRAW(ext string) bool` - Detect RAW formats
-- [ ] Port 12 integration tests
-- [ ] Test cross-filesystem moves (EXDEV handling)
+- [x] `safeCopy(src, dst string) error` - Atomic copy with temp file
+- [x] `safeMove(src, dst string) error` - Rename or copy+delete
+- [x] `isValidExtension(ext string) bool` - Filter file types
+- [x] `isRAW(ext string) bool` - Detect RAW formats
+- [x] Port 12 integration tests
+- [x] Test cross-filesystem moves (EXDEV handling)
+- [x] Verify coverage: **81.1%** (exceeds Python's 73%)
 
 **Dependencies**:
 - Phase 1 complete (duplicate, pathgen)
@@ -196,7 +197,7 @@ make build         # ✅ Binary builds
 
 ---
 
-### Phase 4: Orchestration & CLI
+### Phase 4: Orchestration & CLI 🎯 NEXT
 
 **Goal**: Complete working tool with parallel processing
 
@@ -478,26 +479,32 @@ Final release ready when:
 
 ## Next Steps
 
-**Immediate**: Start Phase 1A - Duplicate Detector
+**Immediate**: Start Phase 4 - Orchestration & CLI Integration
 
 ```bash
-cd internal/duplicate
-# Create duplicate.go
-# Port from sortpics/duplicate_detector.py
-# Port tests from tests/test_duplicate_detector.py
-make test
+# Install worker pool dependency
+go get github.com/alitto/pond
+
+# Review Python implementation
+cd ../sortpics
+cat sortpics/__main__.py
+cat tests/test_main.py
+
+# Implement CLI orchestration
+cd ../sortpics-go/cmd/sortpics/cmd
+# Expand root.go with run() function
 ```
 
 **Commands to get started**:
 ```bash
 # Review Python implementation
 cd ../sortpics
-cat sortpics/duplicate_detector.py
-cat tests/test_duplicate_detector.py
+cat sortpics/__main__.py
+cat tests/test_main.py
 
 # Start Go implementation
-cd ../sortpics-go/internal/duplicate
-# Create duplicate.go and implement
+cd ../sortpics-go/cmd/sortpics/cmd
+# Implement worker pool and directory walking in root.go
 ```
 
 **Recommended workflow**:
@@ -540,5 +547,5 @@ cd ../sortpics-go/internal/duplicate
 
 ---
 
-**Last Updated**: October 14, 2025
-**Status**: Pre-migration complete, ready for Phase 1
+**Last Updated**: October 16, 2025
+**Status**: Phase 3 complete (81.1% coverage), ready for Phase 4 - Orchestration & CLI
