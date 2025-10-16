@@ -12,6 +12,7 @@ import (
 	"github.com/alitto/pond"
 	"github.com/chris/sortpics-go/internal/rename"
 	"github.com/chris/sortpics-go/pkg/config"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -275,6 +276,23 @@ func collectFiles(sourceDirs []string, recursive bool, verbose int) ([]string, e
 func processFiles(files []string, destDir string, cfg *config.ProcessingConfig, workers int, verbose int) (*Stats, error) {
 	stats := &Stats{}
 
+	// Create progress bar (only if not verbose)
+	var bar *progressbar.ProgressBar
+	if verbose == 0 {
+		bar = progressbar.NewOptions(len(files),
+			progressbar.OptionSetDescription("Processing"),
+			progressbar.OptionSetWriter(os.Stderr),
+			progressbar.OptionShowCount(),
+			progressbar.OptionShowIts(),
+			progressbar.OptionSetWidth(40),
+			progressbar.OptionThrottle(65*1000000), // 65ms
+			progressbar.OptionShowElapsedTimeOnFinish(),
+			progressbar.OptionOnCompletion(func() {
+				fmt.Fprint(os.Stderr, "\n")
+			}),
+		)
+	}
+
 	// Create worker pool with bounded queue
 	pool := pond.New(workers, len(files))
 	defer pool.StopAndWait()
@@ -289,11 +307,20 @@ func processFiles(files []string, destDir string, cfg *config.ProcessingConfig, 
 					fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", file, err)
 				}
 			}
+			// Update progress bar
+			if bar != nil {
+				bar.Add(1)
+			}
 		})
 	}
 
 	// Wait for all tasks to complete
 	pool.StopAndWait()
+
+	// Finish progress bar
+	if bar != nil {
+		bar.Finish()
+	}
 
 	return stats, nil
 }
