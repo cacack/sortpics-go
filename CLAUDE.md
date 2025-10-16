@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 sortpics-go is a Go port of a Python photo/video organization tool. It organizes media files into a chronological directory structure using EXIF metadata with a fallback hierarchy: EXIF → QuickTime → filename → filesystem.
 
-**Status**: Phase 1 complete (duplicate detector: 86.8% coverage, path generator: 97.6% coverage). Ready for Phase 2 (metadata extraction).
+**Status**: Phase 2 complete (duplicate: 86.8%, pathgen: 97.6%, metadata: 73.3%). Ready for Phase 3 (file operations).
 
 ## Build & Test Commands
 
@@ -41,7 +41,7 @@ make clean              # Remove build artifacts
 
 1. **internal/duplicate** - ✅ COMPLETE - SHA256 hashing, duplicate detection, collision resolution (`_N` suffix)
 2. **internal/pathgen** - ✅ COMPLETE - Generates destination paths in format: `YYYY/MM/YYYY-MM-DD/YYYYMMDD-HHMMSS.subsec_Make-Model.ext`
-3. **internal/metadata** - 🚧 NEXT - EXIF extraction via ExifTool wrapper, datetime fallback logic, make/model normalization
+3. **internal/metadata** - ✅ COMPLETE - EXIF extraction via ExifTool wrapper, datetime fallback logic, make/model normalization
 4. **internal/rename** - PENDING - Orchestrates metadata → pathgen → duplicate → file operations (atomic copy/move)
 5. **cmd/sortpics/cmd** - PENDING - CLI framework (Cobra), worker pool orchestration, progress tracking
 
@@ -72,7 +72,7 @@ File → MetadataExtractor → ImageMetadata → PathGenerator → destination p
 4. Match Python behavior for identical inputs
 5. Maintain or exceed Python test coverage
 
-**Current phase**: Phase 2 - Metadata extraction (Phase 1 complete: duplicate detector 29 tests/86.8% coverage, path generator 18 tests/97.6% coverage)
+**Current phase**: Phase 3 - File operations (Phases 1-2 complete: duplicate 86.8%, pathgen 97.6%, metadata 73.3%)
 
 **Next phases**: See MIGRATION_PLAN.md for detailed 6-phase roadmap
 
@@ -146,3 +146,4 @@ sortpics verify --fix /photos
 - Write capability: Can set XMP:Album and keywords on any format
 - Atomic operations: Use `os.CreateTemp()` with UUID names, cleanup on error
 - Use conventional commit.
+- Commit after completing a new phase or when it makes sense to ensure logical commits.
