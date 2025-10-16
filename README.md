@@ -451,20 +451,17 @@ make test-fixtures      # Requires exiftool
 make clean
 ```
 
-## Migration Status
-
-### ✅ All Phases Complete!
-
-- ✅ **Phase 1**: Core Components (duplicate, pathgen) - 86.8% / 100% coverage
-- ✅ **Phase 2**: Metadata Extraction - 94.4% coverage
-- ✅ **Phase 3**: File Operations (rename) - 81.1% coverage
-- ✅ **Phase 4**: Orchestration & CLI - 72.6% coverage
-- ✅ **Verify Command**: Archive validation with --fix mode
-- ✅ **Integration Tests**: All major features tested
+## Test Coverage
 
 **Overall Coverage**: 90.6% ✅
 
-See [STATUS.md](STATUS.md) and [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for details.
+- **duplicate**: 86.8% coverage
+- **pathgen**: 100.0% coverage
+- **metadata**: 94.4% coverage
+- **rename**: 81.1% coverage
+- **CLI**: 72.6% coverage
+
+All major features have comprehensive unit and integration tests.
 
 ## Usage
 
@@ -554,14 +551,10 @@ Same as original sortpics project (to be determined)
 ## References
 
 ### Python Original
-- Repository: `../sortpics`
-- Documentation: `../sortpics/docs/`
-- Test suite: `../sortpics/tests/` (125 tests, 95% coverage)
+This is a complete rewrite of the original Python sortpics tool, providing better performance, cross-platform binaries, and improved maintainability while retaining full feature parity.
 
-### Research Documents
-- EXIF library evaluation (see research notes)
-- Concurrency patterns analysis (see research notes)
-- Architecture specification: `../sortpics/docs/architecture.md`
+### Technology Decisions
+- See [DECISION.md](DECISION.md) for analysis of ExifTool wrapper vs pure Go implementation
 
 ## Acknowledgments
 
