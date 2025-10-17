@@ -159,7 +159,8 @@ sortpics verify --fix /photos
 
 ### Commit Guidelines
 - Use conventional commit format (feat, fix, refactor, docs, test, ci)
-- Commit after completing a new phase or when it makes sense to ensure logical commits
+- Keep commit messages concise and succinct
+- Commit after completing a logical phase of work
 
 ### Documentation Maintenance
 - **CHANGELOG.md**: Update with notable changes for each release
