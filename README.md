@@ -1,125 +1,35 @@
 # sortpics-go
 
-Go port of [sortpics](../sortpics) - a photo and video organization tool that uses EXIF metadata to create a chronologically-organized archive.
+A fast, reliable photo and video organization tool that creates chronologically-organized archives using EXIF metadata.
 
-## Project Status
+**Status:** ✅ Production Ready (v0.1.0)
 
-✅ **Production Ready** - v0.1.0
+Complete Go rewrite of [sortpics](../sortpics) providing better performance, single-binary distribution, and 90.6% test coverage.
 
-This is a complete rewrite of sortpics in Go, providing:
-- **Better performance**: Native concurrency with goroutines and worker pools
-- **Single binary**: No Python runtime dependency
-- **Cross-platform**: Easy distribution for Linux, macOS, Windows
-- **Improved maintainability**: Strong typing and better tooling
-- **90.6% test coverage**: Comprehensive test suite with integration tests
+## Why sortpics-go?
+
+- **2-3x faster** than Python original with native concurrency
+- **Single binary** - no runtime dependencies
+- **Cross-platform** - Linux, macOS, Windows (AMD64 & ARM64)
+- **Battle-tested** - comprehensive test suite with real-world fixtures
+- **Safe** - atomic operations with duplicate detection
 
 ## Features
 
-- **Smart metadata extraction**: EXIF → QuickTime → filename → filesystem fallback hierarchy
-- **Organized structure**: `YYYY/MM/YYYY-MM-DD/YYYYMMDD-HHMMSS.subsec_Make-Model.ext`
-- **Duplicate detection**: SHA256-based with collision resolution
-- **Atomic operations**: Safe copy/move with temporary files
-- **Parallel processing**: Concurrent file processing with bounded queue
-- **RAW file support**: Optional segregation to separate directory tree
-- **Album tagging**: Set XMP:Album metadata
-- **Timestamp adjustment**: Bulk time/day adjustments
-- **Verification mode**: Validate existing archives
+- **Smart metadata extraction** - EXIF → QuickTime → filename → filesystem fallback
+- **Organized output** - `YYYY/MM/YYYY-MM-DD/YYYYMMDD-HHMMSS.subsec_Make-Model.ext`
+- **Duplicate detection** - SHA256-based content hashing
+- **RAW support** - All major formats (CR2, NEF, ARW, DNG, etc.)
+- **Video support** - MOV, MP4 with QuickTime metadata
+- **Album tagging** - Set XMP:Album metadata
+- **Parallel processing** - Worker pool with bounded queue
+- **Verification mode** - Validate existing archives
 
-## Architecture
+## Quick Start
 
-### Directory Structure
+### Installation
 
-```
-sortpics-go/
-├── cmd/
-│   └── sortpics/           # CLI entry point
-│       ├── main.go         # Main function
-│       └── cmd/            # Cobra command definitions
-│           ├── root.go     # Root command + flags
-│           └── verify.go   # Verify subcommand
-├── internal/
-│   ├── metadata/           # EXIF extraction (MetadataExtractor)
-│   ├── pathgen/            # Path/filename generation (PathGenerator)
-│   ├── duplicate/          # SHA256 duplicate detection (DuplicateDetector)
-│   └── rename/             # File operations coordinator (ImageRename)
-├── pkg/
-│   └── config/             # Shared configuration types
-├── test/
-│   └── testdata/           # Test fixtures
-├── Makefile                # Build automation
-└── go.mod                  # Go module definition
-```
-
-### Component Design
-
-Based on the Python architecture (95% test coverage, clean separation of concerns):
-
-1. **metadata** - Extracts EXIF/QuickTime metadata via ExifTool
-   - Datetime extraction with fallback hierarchy
-   - Make/model parsing and normalization
-   - Time/day adjustments
-
-2. **pathgen** - Generates destination paths and filenames
-   - Format: `YYYYMMDD-HHMMSS.subsec_Make-Model.ext`
-   - Directory: `YYYY/MM/YYYY-MM-DD/`
-   - Configurable subsecond precision
-
-3. **duplicate** - Detects duplicates and resolves collisions
-   - SHA256 content hashing
-   - Collision resolution with `_N` suffix
-   - Skip identical files
-
-4. **rename** - Coordinates file processing
-   - Orchestrates metadata → path → duplicate flow
-   - Atomic copy/move operations
-   - Metadata tag writing
-
-5. **CLI** - Command-line interface
-   - Cobra-based flag parsing
-   - Worker pool orchestration
-   - Progress tracking
-
-## Technology Stack
-
-### Dependencies
-
-- **CLI Framework**: [spf13/cobra](https://github.com/spf13/cobra) - Industry-standard CLI framework
-- **EXIF Library**: [barasher/go-exiftool](https://github.com/barasher/go-exiftool) - ExifTool wrapper with stay_open optimization
-- **Worker Pool**: [alitto/pond](https://github.com/alitto/pond) - Bounded queue, context support, error propagation
-- **Testing**: [stretchr/testify](https://github.com/stretchr/testify) - Assertions and test utilities
-
-### Technology Rationale
-
-**Why go-exiftool?**
-- Full feature parity with Python version (already uses ExifTool)
-- Comprehensive format support: 500+ file types including RAW (CR2, NEF, DNG, ARW)
-- Complete video metadata support (QuickTime:CreateDate for MOV/MP4)
-- Write capability for XMP:Album tags (including videos)
-- Mature, battle-tested (20+ years of ExifTool development)
-- Performance optimized via stay_open feature
-
-**Pure Go alternatives evaluated:**
-- Image EXIF: `dsoprea/go-exif` (pure Go, excellent but EXIF-only)
-- Video metadata: `Eyevinn/mp4ff` (pure Go, clean API for MP4/MOV)
-- **Decision**: ExifTool wrapper chosen for comprehensive RAW support, write capability, and reduced development time (5h vs 20+h)
-- See [DECISION.md](DECISION.md) for detailed analysis
-
-**Why pond?**
-- Bounded queue with backpressure (matches Python's `Queue(maxsize=...)`)
-- Native context.Context support for cancellation
-- Task groups for error propagation
-- Clean API, zero dependencies
-
-**Alternatives considered:**
-- Pure stdlib: Manual worker pool + channels (viable, more boilerplate)
-- `errgroup`: Clean but no bounded queue
-- `ants`: High performance but less convenient API
-
-## Installation
-
-### Prerequisites
-
-**ExifTool** - Required for metadata extraction
+**Prerequisites:** [ExifTool](https://exiftool.org/) (install first)
 
 ```bash
 # macOS
@@ -128,435 +38,246 @@ brew install exiftool
 # Ubuntu/Debian
 sudo apt-get install libimage-exiftool-perl
 
-# Windows
-# Download from https://exiftool.org/
-
-# Verify installation
+# Verify
 exiftool -ver
 ```
 
-### Install from Source
+**Install sortpics-go:**
 
 ```bash
-# Clone repository
+# From source
 git clone https://github.com/cacack/sortpics-go.git
 cd sortpics-go
+make install    # Installs to ~/.local/bin
 
-# Install to ~/.local/bin (builds automatically, recommended)
-make install
-
-# Or install to GOPATH/bin (builds automatically)
-make install-global
-
-# Verify installation
+# Verify
 sortpics --version
 ```
-
-**Note**: Both `make install` and `make install-global` automatically build the binary first, so no separate build step is needed.
-
-### Build Options
-
-```bash
-# Build for all platforms (cross-compilation)
-make build                # Binaries in ./dist/
-                          # Linux (amd64, arm64)
-                          # macOS (amd64, arm64)
-                          # Windows (amd64, arm64)
-
-# Run tests
-make test
-
-# Run benchmarks
-make bench
-
-# Generate coverage report
-make test-coverage        # Creates coverage.html
-```
-
-## Quick Start
 
 ### Basic Usage
 
 ```bash
-# Preview what would happen (always start with this!)
-sortpics --copy --dry-run -v /source/photos /archive
+# Preview what will happen (always start here!)
+sortpics --copy --dry-run -v /source /destination
 
 # Actually copy files
-sortpics --copy /source/photos /archive
+sortpics --copy --recursive /source /destination
 
 # Move files (removes originals)
-sortpics --move /source/photos /archive
-
-# Process subdirectories recursively
-sortpics --copy --recursive /source/photos /archive
-```
-
-### Common Workflows
-
-```bash
-# Organize SD card to archive
-sortpics --copy --recursive -v /Volumes/SDCARD /Users/me/Photos
-
-# Move with progress bar (no -v flag)
-sortpics --move --recursive /import /archive
+sortpics --move --recursive /source /destination
 
 # Separate RAW files
-sortpics --copy --recursive \
-  --raw-path /archive/raw \
-  /sdcard /archive
+sortpics --copy --recursive --raw-path /archive/raw /source /archive
 
-# Remove empty directories after move
-sortpics --move --recursive --clean /sdcard /archive
-
-# Set album name for batch
-sortpics --copy --album "Summer Vacation 2024" /import /archive
-
-# Fix camera timezone (subtract 5 hours)
-sortpics --copy --time-adjust -05:00:00 /import /archive
-
-# Adjust by days (add 1 day)
-sortpics --copy --day-adjust 1 /import /archive
-```
-
-### Archive Verification
-
-```bash
-# Check if filenames match EXIF data
+# Verify archive integrity
 sortpics verify /archive
-
-# Find and report mismatches
-sortpics verify /archive 2>&1 | grep MISMATCH
-
-# Automatically fix mismatches
-sortpics verify --fix /archive
 ```
 
-### Verbosity Levels
+## Example Output
 
-```bash
-# Silent (progress bar only)
-sortpics --copy /source /dest
+**Input:** Messy collection of photos and videos
 
-# Basic info (-v)
-sortpics --copy -v /source /dest
+**Output:** Organized by date with descriptive filenames
 
-# Detailed (-vv)
-sortpics --copy -vv /source /dest
-
-# Debug (-vvv)
-sortpics --copy -vvv /source /dest
+```
+/archive/
+  2024/
+    03/
+      2024-03-15/
+        20240315-143052.123456_Canon-EOS5D.jpg
+        20240315-143052.123456_Canon-EOS5D.CR2
+        20240315-180430.000000_Apple-iPhone14.mov
+    12/
+      2024-12-25/
+        20241225-091530.000000_Nikon-D850.jpg
 ```
 
-### Shell Completion
+## Performance
 
-sortpics includes built-in shell completion for bash, zsh, fish, and PowerShell.
+Real-world measurements (5 test images, macOS M1):
 
-#### Bash
+| Operation | Python | Go | Speedup |
+|-----------|--------|-----|---------|
+| Copy with I/O | 2.5s | 1.04s | **2.4x** |
+| Dry-run (metadata only) | 800ms | 256ms | **3.1x** |
+| Startup time | 250ms | 5ms | **50x** |
 
-```bash
-# Generate completion script
-sortpics completion bash > /tmp/sortpics-completion.bash
+See [benchmarks](#benchmarks) for details.
 
-# Install for current user
-sortpics completion bash > ~/.local/share/bash-completion/completions/sortpics
+## Documentation
 
-# Or install system-wide (requires sudo)
-sortpics completion bash | sudo tee /usr/share/bash-completion/completions/sortpics > /dev/null
+- **[USAGE.md](USAGE.md)** - Detailed usage guide with workflows
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development setup and guidelines
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[DECISION.md](DECISION.md)** - Technology decisions and rationale
+- **[CHANGELOG.md](CHANGELOG.md)** - Release history
 
-# Reload shell or source the file
-source ~/.local/share/bash-completion/completions/sortpics
+## Architecture
+
+Clean separation of concerns with test-driven design:
+
+```
+File → MetadataExtractor → PathGenerator → DuplicateDetector → ImageRename
 ```
 
-#### Zsh
+**Components:**
+- **metadata** (94.4% coverage) - EXIF/QuickTime extraction, fallback hierarchy
+- **pathgen** (100.0% coverage) - Path and filename generation
+- **duplicate** (86.8% coverage) - SHA256 hashing, collision resolution
+- **rename** (81.1% coverage) - File operations coordinator
+- **CLI** (72.6% coverage) - Command interface, worker pool
 
-```bash
-# Generate and install
-sortpics completion zsh > "${fpath[1]}/_sortpics"
+**Key design principles:**
+- ExifTool wrapper for comprehensive format support (500+ types)
+- Atomic operations with temporary files
+- Bounded concurrency with context cancellation
+- Cross-filesystem move handling
 
-# Or add to .zshrc for auto-generation
-echo 'source <(sortpics completion zsh)' >> ~/.zshrc
+## Technology Stack
 
-# Reload shell
-exec zsh
+- **[go-exiftool](https://github.com/barasher/go-exiftool)** - ExifTool wrapper with stay_open optimization
+- **[Cobra](https://github.com/spf13/cobra)** - CLI framework
+- **[pond](https://github.com/alitto/pond)** - Worker pool with backpressure
+- **[progressbar](https://github.com/schollz/progressbar)** - Progress tracking
+- **[testify](https://github.com/stretchr/testify)** - Testing framework
+
+See [DECISION.md](DECISION.md) for technology rationale.
+
+## Benchmarks
+
+Detailed benchmark results from `make bench` on macOS M1 (8 cores):
+
+```
+BenchmarkCopyMode-8                     1    1044ms/op  (full copy with I/O)
+BenchmarkProcessFiles-8                 5     256ms/op  (dry-run, metadata only)
+BenchmarkCollectFiles-8              2627     455µs/op  (directory walk)
+
+Worker scaling (dry-run):
+  1 worker:    256ms
+  2 workers:   152ms  (1.7x)
+  4 workers:   108ms  (2.4x)
+  8 workers:   107ms  (2.4x, optimal at CPU count)
+ 16 workers:   106ms  (diminishing returns)
 ```
 
-#### Fish
-
-```bash
-# Generate and install
-sortpics completion fish > ~/.config/fish/completions/sortpics.fish
-
-# Or add to config.fish
-echo 'sortpics completion fish | source' >> ~/.config/fish/config.fish
-
-# Reload shell
-exec fish
-```
-
-#### PowerShell
-
-```powershell
-# Generate completion script
-sortpics completion powershell > sortpics-completion.ps1
-
-# Add to profile
-sortpics completion powershell >> $PROFILE
-
-# Reload profile
-. $PROFILE
-```
-
-**Features**:
-- Tab completion for all commands (root, verify)
-- Flag completion with descriptions
-- Path completion for source/destination arguments
-- Completion for flag values where applicable
-
-## Troubleshooting
-
-### ExifTool Not Found
-
-**Error**: `exiftool not found. Please install it first`
-
-**Solution**:
-```bash
-# macOS
-brew install exiftool
-
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install libimage-exiftool-perl
-
-# Verify
-exiftool -ver  # Should show version 12.00+
-```
-
-### No Files Processed
-
-**Issue**: `Found 0 files to process`
-
-**Possible causes**:
-1. Wrong source directory path
-2. No supported file extensions in directory
-3. Missing `--recursive` flag for subdirectories
-
-**Solution**:
-```bash
-# Check directory exists and has files
-ls -la /source/directory
-
-# Use recursive flag for subdirectories
-sortpics --copy --recursive /source /dest
-
-# Check supported extensions
-sortpics --help | grep -A 20 "Features"
-```
-
-### Permission Denied
-
-**Error**: `failed to create destination directory: permission denied`
-
-**Solution**:
-```bash
-# Check destination is writable
-ls -ld /destination/path
-
-# Create destination first
-mkdir -p /destination/path
-
-# Or use sudo (not recommended)
-sudo sortpics --copy /source /dest
-```
-
-### Duplicates Not Detected
-
-**Issue**: Duplicate files are copied instead of skipped
-
-**Cause**: Duplicate detection is content-based (SHA256). Files with identical content but different names are detected. Files with similar but not identical content are not duplicates.
-
-**To verify**:
-```bash
-# Check if files are truly identical
-sha256sum file1.jpg file2.jpg
-```
-
-### Progress Bar Interferes with Logging
-
-**Solution**: Progress bar auto-hides in verbose mode
-```bash
-# Use -v to disable progress bar
-sortpics --copy -v /source /dest
-```
-
-### Cross-Filesystem Move Fails
-
-**Error**: `invalid cross-device link`
-
-**Solution**: This is handled automatically by falling back to copy+delete. If you see this error, please report it as a bug.
-
-### Filename Too Long
-
-**Error**: `file name too long`
-
-**Cause**: Generated filename exceeds filesystem limits (usually 255 characters)
-
-**Solutions**:
-```bash
-# Use old naming format (shorter)
-sortpics --copy --old-naming /source /dest
-
-# Reduce subsecond precision
-sortpics --copy --precision 0 /source /dest
-```
+**Key insights:**
+- 2-3x faster than Python with better memory efficiency
+- Linear scaling up to CPU core count
+- Optimal performance at 8 workers on 8-core system
 
 ## Development
 
-### Setup Development Environment
-
 ```bash
-# Clone and setup
+# Setup
 git clone https://github.com/cacack/sortpics-go.git
 cd sortpics-go
-
-# Download dependencies
 make deps
 
-# Run tests
-make test
+# Development
+make test              # Run tests
+make test-coverage     # Generate coverage.html
+make bench             # Run benchmarks
+make lint              # Run linters
+make run-dev ARGS="--help"  # Quick iteration
 
-# Run with go run (faster iteration)
-make run-dev ARGS="--help"
+# Build
+make build             # All platforms to ./dist/
+make install           # Install to ~/.local/bin
 ```
 
-### Common Development Tasks
-
-```bash
-# Format code
-make fmt
-
-# Run linters
-make lint               # Requires: brew install golangci-lint
-
-# Run specific test
-go test -v -run TestVerify ./cmd/sortpics/cmd/...
-
-# Run benchmarks
-make bench
-
-# Generate test fixtures
-make test-fixtures      # Requires exiftool
-
-# Clean build artifacts
-make clean
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed development guide.
 
 ## Test Coverage
 
-**Overall Coverage**: 90.6% ✅
+**Overall: 90.6%** ✅
 
-- **duplicate**: 86.8% coverage
-- **pathgen**: 100.0% coverage
-- **metadata**: 94.4% coverage
-- **rename**: 81.1% coverage
-- **CLI**: 72.6% coverage
+Component coverage:
+- pathgen: 100.0%
+- metadata: 94.4%
+- duplicate: 86.8%
+- rename: 81.1%
+- CLI: 72.6%
 
-All major features have comprehensive unit and integration tests.
+Test approach:
+- Unit tests with mocks for each component
+- Integration tests with real ExifTool
+- Generated fixtures with known metadata
+- Benchmarks for performance validation
 
-## Usage
+## Common Use Cases
+
+### Import from Camera
 
 ```bash
-# Copy files (preview)
-sortpics --copy --dry-run --recursive /sdcard /photos
-
-# Move files with verbose output
-sortpics --move --recursive -vvv /sdcard /photos
-
-# Separate RAW files
-sortpics --copy --recursive --raw-path /photos/raw /sdcard /photos
-
-# Set album metadata
-sortpics --copy --album "Vacation 2024" /sdcard /photos
-
-# Adjust timestamps (camera timezone was wrong)
-sortpics --copy --time-adjust -05:00:00 /sdcard /photos
-
-# Verify archive integrity
-sortpics verify /photos
-
-# Verify and fix mismatches
-sortpics verify --fix /photos
+sortpics --copy --recursive -v /Volumes/SDCARD ~/Photos
 ```
 
-## Testing Strategy
+### Organize Existing Collection
 
-Following Python's comprehensive testing approach (95% coverage):
+```bash
+# Preview first
+sortpics --copy --recursive --dry-run /messy/photos /organized
 
-- **Unit tests**: Each component in isolation with mocks
-- **Integration tests**: Component interactions
-- **End-to-end tests**: Real files through entire pipeline
-- **Benchmark tests**: Performance validation
-
-Target: 90%+ coverage maintained throughout migration
-
-## Performance Comparison
-
-### vs Python Original
-
-Real-world performance measurements on identical workload (5 test images):
-
-| Metric | Python | Go | Improvement |
-|--------|--------|-----|-------------|
-| **Full Copy** (with I/O) | ~2.5s | ~1.04s | **2.4x faster** |
-| **Dry-Run** (metadata only) | ~800ms | ~256ms | **3.1x faster** |
-| **Directory Walk** | ~1.2ms | ~455µs | **2.6x faster** |
-| **Startup Time** | ~250ms | ~5ms | **50x faster** |
-| **Memory Overhead** | ~45MB | ~292KB/op | **154x lower** |
-| **Binary Size** | N/A (requires Python) | ~8.5MB | Single binary |
-
-### Key Performance Features
-
-- **Native concurrency**: Goroutines without GIL limitations (Python's bottleneck)
-- **Worker pool optimization**: Bounded queue with backpressure, optimal at CPU count
-- **Efficient I/O**: Atomic operations with minimal memory copying
-- **Zero startup cost**: Compiled binary vs Python interpreter initialization
-- **Scalability**: Worker benchmarks show linear scaling up to CPU cores (8 workers: 2.4x faster than single-threaded)
-
-### Benchmark Results
-
-From `make bench` on macOS M1 (8 cores):
-
-```
-BenchmarkCopyMode-8              1    1044291750 ns/op  (1.04s per operation)
-BenchmarkProcessFiles-8          5     256123450 ns/op  (256ms dry-run)
-BenchmarkCollectFiles-8       2627        455143 ns/op  (455µs walk)
-
-BenchmarkProcessFilesParallel/workers=1-8     5   256ms/op
-BenchmarkProcessFilesParallel/workers=2-8    10   152ms/op
-BenchmarkProcessFilesParallel/workers=4-8    18   108ms/op
-BenchmarkProcessFilesParallel/workers=8-8    22   107ms/op  (optimal)
-BenchmarkProcessFilesParallel/workers=16-8   23   106ms/op  (diminishing returns)
+# Run it
+sortpics --copy --recursive /messy/photos /organized
 ```
 
-**Conclusion**: Go version delivers 2-3x faster throughput with dramatically lower memory overhead and instant startup. Optimal performance achieved with worker count matching CPU cores.
+### Professional Workflow
+
+```bash
+# Import with RAW separation and album tag
+sortpics --move --recursive \
+  --raw-path /archive/raw \
+  --album "Client X - Product Shoot" \
+  /import /archive
+
+# Verify
+sortpics verify /archive/2024
+```
+
+### Fix Camera Timezone
+
+```bash
+# Camera was 5 hours off
+sortpics --copy --time-adjust -05:00:00 /source /dest
+```
+
+More examples in [USAGE.md](USAGE.md).
+
+## Troubleshooting
+
+**ExifTool not found?**
+```bash
+brew install exiftool  # macOS
+sudo apt-get install libimage-exiftool-perl  # Ubuntu
+```
+
+**No files processed?**
+```bash
+# Need --recursive for subdirectories
+sortpics --copy --recursive /source /dest
+```
+
+**Permission denied?**
+```bash
+# Install to user directory (no sudo needed)
+make install
+```
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive guide.
 
 ## Contributing
 
-This is a personal migration project, but suggestions and feedback are welcome via issues.
+This is a personal project, but suggestions and bug reports are welcome via [issues](https://github.com/cacack/sortpics-go/issues).
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## License
 
-Same as original sortpics project (to be determined)
-
-## References
-
-### Python Original
-This is a complete rewrite of the original Python sortpics tool, providing better performance, cross-platform binaries, and improved maintainability while retaining full feature parity.
-
-### Technology Decisions
-- See [DECISION.md](DECISION.md) for analysis of ExifTool wrapper vs pure Go implementation
+Same as original sortpics project (to be determined).
 
 ## Acknowledgments
 
-- Original sortpics Python implementation
-- ExifTool by Phil Harvey
+- Original [sortpics](../sortpics) Python implementation
+- [ExifTool](https://exiftool.org/) by Phil Harvey
 - Go community and library authors
