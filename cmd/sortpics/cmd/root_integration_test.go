@@ -158,6 +158,88 @@ func TestIntegrationCLI(t *testing.T) {
 	})
 }
 
+func TestIntegrationCleanAfterMove(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	// Create temp source and dest directories
+	srcDir, err := os.MkdirTemp("", "sortpics-clean-src-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(srcDir)
+
+	destDir, err := os.MkdirTemp("", "sortpics-clean-dest-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(destDir)
+
+	// Create subdirectory with a test file and .DSC file
+	subDir := filepath.Join(srcDir, "DCIM")
+	require.NoError(t, os.Mkdir(subDir, 0755))
+
+	// Copy a real test file to the source
+	testFile := filepath.Join("..", "..", "..", "test", "testdata", "basic", "test_001.jpg")
+	srcFile := filepath.Join(subDir, "test_001.jpg")
+	data, err := os.ReadFile(testFile)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(srcFile, data, 0644))
+
+	// Add a .DSC file
+	dscFile := filepath.Join(subDir, "NIKON001.DSC")
+	require.NoError(t, os.WriteFile(dscFile, []byte{}, 0644))
+
+	// Reset flags for move with clean
+	copyMode = false
+	moveMode = true
+	dryRun = false
+	recursive = true
+	clean = true
+	verbose = 0
+	numWorkers = 2
+	precision = 6
+	oldNaming = false
+	rawPath = ""
+	album = ""
+	albumFromDir = false
+	tags = []string{}
+	timeAdjust = ""
+	dayAdjust = 0
+
+	// Run command
+	err = run(nil, []string{srcDir, destDir})
+	require.NoError(t, err)
+
+	// Verify .DSC file was removed
+	assert.NoFileExists(t, dscFile, "DSC file should be removed during cleanup")
+
+	// Verify subdirectory was removed (should be empty after move)
+	assert.NoDirExists(t, subDir, "Empty subdirectory should be removed")
+
+	// Verify file was moved to destination
+	entries, err := os.ReadDir(destDir)
+	require.NoError(t, err)
+	assert.NotEmpty(t, entries, "Destination should have the moved file")
+}
+
+func TestCleanEmptyDirectoriesNonRecursive(t *testing.T) {
+	// Create temp directory
+	tmpDir, err := os.MkdirTemp("", "sortpics-nonrecursive-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create subdirectory (should NOT be cleaned in non-recursive mode)
+	subDir := filepath.Join(tmpDir, "subdir")
+	require.NoError(t, os.Mkdir(subDir, 0755))
+
+	// Run non-recursive cleanup
+	stats := cleanEmptyDirectories([]string{tmpDir}, false, 0)
+
+	// Verify subdirectory still exists (non-recursive doesn't descend)
+	assert.DirExists(t, subDir, "Subdirectory should still exist in non-recursive mode")
+
+	// Verify no directories were removed (tmpDir is not empty, has subdir)
+	assert.Equal(t, 0, stats.Removed, "Should not remove directories in non-recursive mode when not empty")
+}
+
 func TestCameraMetadataFileDetection(t *testing.T) {
 	tests := []struct {
 		name     string
