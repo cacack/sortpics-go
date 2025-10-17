@@ -151,7 +151,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## License
 
-Same as original sortpics project (to be determined).
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
