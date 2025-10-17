@@ -326,6 +326,7 @@ func processFiles(ctx context.Context, files []string, destDir string, cfg *conf
 			progressbar.OptionSetDescription("Processing"),
 			progressbar.OptionSetWriter(os.Stderr),
 			progressbar.OptionShowCount(),
+			progressbar.OptionSetItsString("files"),
 			progressbar.OptionShowIts(),
 			progressbar.OptionSetWidth(40),
 			progressbar.OptionThrottle(65*1000000), // 65ms
