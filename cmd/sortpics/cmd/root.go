@@ -203,6 +203,31 @@ func run(cmd *cobra.Command, args []string) error {
 
 	if len(files) == 0 {
 		fmt.Println("No files to process")
+
+		// If clean flag is set, ask user if they want to proceed with cleaning
+		if clean && moveMode && !dryRun {
+			fmt.Print("\n--clean flag is set. Proceed with cleaning empty directories? [y/N]: ")
+			var response string
+			fmt.Scanln(&response)
+
+			if strings.ToLower(strings.TrimSpace(response)) != "y" {
+				fmt.Println("Cleanup canceled")
+				return nil
+			}
+
+			fmt.Println("\nCleaning empty directories...")
+			cleanStats := cleanEmptyDirectories(sourceDirs, recursive, verbose)
+			if cleanStats.FilesRemoved > 0 {
+				fmt.Printf("Removed %d camera metadata files\n", cleanStats.FilesRemoved)
+			}
+			if cleanStats.Removed > 0 {
+				fmt.Printf("Removed %d empty directories\n", cleanStats.Removed)
+			}
+			if cleanStats.FilesRemoved == 0 && cleanStats.Removed == 0 {
+				fmt.Println("No camera metadata files or empty directories found")
+			}
+		}
+
 		return nil
 	}
 
@@ -221,8 +246,14 @@ func run(cmd *cobra.Command, args []string) error {
 	if clean && moveMode && !dryRun {
 		fmt.Println("\nCleaning empty directories...")
 		cleanStats := cleanEmptyDirectories(sourceDirs, recursive, verbose)
+		if cleanStats.FilesRemoved > 0 {
+			fmt.Printf("Removed %d camera metadata files\n", cleanStats.FilesRemoved)
+		}
 		if cleanStats.Removed > 0 {
 			fmt.Printf("Removed %d empty directories\n", cleanStats.Removed)
+		}
+		if cleanStats.FilesRemoved == 0 && cleanStats.Removed == 0 {
+			fmt.Println("No camera metadata files or empty directories found")
 		}
 	}
 
@@ -479,8 +510,14 @@ func printSummary(stats *Stats, verbose int) {
 
 // CleanStats tracks directory cleaning statistics
 type CleanStats struct {
-	Checked int
-	Removed int
+	Checked      int
+	Removed      int
+	FilesRemoved int
+}
+
+// cameraMetadataExtensions lists file extensions for camera-specific metadata files that should be cleaned up
+var cameraMetadataExtensions = []string{
+	".dsc", // Nikon camera metadata files (e.g., NIKON001.DSC)
 }
 
 // cleanEmptyDirectories removes empty directories from source paths
@@ -516,7 +553,28 @@ func cleanEmptyDirsRecursive(dir string, stats *CleanStats, verbose int) {
 		return
 	}
 
-	// First, recursively clean subdirectories
+	// First, remove camera metadata files
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			if isCameraMetadataFile(entry.Name()) {
+				filePath := filepath.Join(dir, entry.Name())
+				if verbose > 0 {
+					fmt.Printf("Removing camera metadata file: %s\n", filePath)
+				}
+				if err := os.Remove(filePath); err == nil {
+					stats.FilesRemoved++
+				}
+			}
+		}
+	}
+
+	// Re-read directory contents after removing metadata files
+	entries, err = os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	// Recursively clean subdirectories
 	for _, entry := range entries {
 		if entry.IsDir() {
 			subdir := filepath.Join(dir, entry.Name())
@@ -534,6 +592,17 @@ func cleanEmptyDirsRecursive(dir string, stats *CleanStats, verbose int) {
 			stats.Removed++
 		}
 	}
+}
+
+// isCameraMetadataFile checks if a file is a camera metadata file that should be cleaned
+func isCameraMetadataFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	for _, metaExt := range cameraMetadataExtensions {
+		if ext == metaExt {
+			return true
+		}
+	}
+	return false
 }
 
 // isDirEmpty checks if a directory is empty

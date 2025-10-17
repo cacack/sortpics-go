@@ -158,6 +158,56 @@ func TestIntegrationCLI(t *testing.T) {
 	})
 }
 
+func TestCameraMetadataFileDetection(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		expected bool
+	}{
+		{"Nikon DSC file uppercase", "NIKON001.DSC", true},
+		{"Nikon DSC file lowercase", "nikon001.dsc", true},
+		{"Nikon DSC file mixed case", "Nikon001.Dsc", true},
+		{"Regular file", "photo.jpg", false},
+		{"Hidden file", ".hidden", false},
+		{"DSC in filename but not extension", "DSC_0001.jpg", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isCameraMetadataFile(tt.filename)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCleanEmptyDirectoriesWithDSC(t *testing.T) {
+	// Create temp directory structure
+	tmpDir, err := os.MkdirTemp("", "sortpics-clean-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create directory with .DSC file (realistic Nikon filename)
+	miscDir := filepath.Join(tmpDir, "MISC")
+	require.NoError(t, os.Mkdir(miscDir, 0755))
+
+	dscFile := filepath.Join(miscDir, "NIKON001.DSC")
+	require.NoError(t, os.WriteFile(dscFile, []byte{}, 0644))
+
+	// Verify setup
+	assert.FileExists(t, dscFile)
+
+	// Run cleanup
+	stats := cleanEmptyDirectories([]string{tmpDir}, true, 0)
+
+	// Verify .DSC file was removed
+	assert.Equal(t, 1, stats.FilesRemoved, "Should remove 1 camera metadata file")
+	assert.NoFileExists(t, dscFile, "NIKON001.DSC file should be removed")
+
+	// Verify directory was also removed since it's now empty
+	assert.Equal(t, 2, stats.Removed, "Should remove 2 directories (MISC and tmpDir)")
+	assert.NoDirExists(t, miscDir, "MISC directory should be removed")
+}
+
 func TestCollectFiles(t *testing.T) {
 	testDataDir := filepath.Join("..", "..", "..", "test", "testdata", "basic")
 
